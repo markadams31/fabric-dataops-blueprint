@@ -93,7 +93,7 @@ def main() -> None:
     if not cap:
         # Deploy identities hold no capacity permission, so this is the common case:
         # the state cannot be preflighted, and a paused capacity surfaces later as
-        # fabric-cicd's CapacityNotActive error (see evidence 2026-09-03-torture).
+        # fabric-cicd's CapacityNotActive error (see the maintainer notes).
         print("note: workspace capacity not visible to this identity — state not preflighted")
 
     core = {"workspace_id": ws["id"],
