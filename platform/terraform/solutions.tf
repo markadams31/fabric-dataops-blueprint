@@ -17,12 +17,12 @@ module "solution" {
   source   = "./modules/solution"
   for_each = local.solutions
 
-  name                = each.key
-  capacity_id         = data.fabric_capacity.platform.id
-  resource_group_name = azurerm_resource_group.platform.name
-  location            = azurerm_resource_group.platform.location
-  github_oidc_repo    = local.github_oidc_repo
-  automation_group_id = azuread_group.automation.object_id
+  name                  = each.key
+  capacity_id           = data.fabric_capacity.platform.id
+  resource_group_name   = azurerm_resource_group.platform.name
+  location              = azurerm_resource_group.platform.location
+  github_oidc_repo      = local.github_oidc_repo
+  automation_group_id   = azuread_group.automation.object_id
   platform_principal_id = azurerm_user_assigned_identity.platform.principal_id
 }
 
@@ -42,8 +42,12 @@ output "solutions" {
 # Terraform-manageable grant that satisfies a shortcut contract to a warehouse.
 # That is an over-grant, accepted and documented (see the watch list): the
 # consumer identity could write to the producer, and we rely on it not to.
+# Both ends must exist: a contract disappears with either side of it, so
+# retiring a solution stays a folder deletion.
 resource "fabric_workspace_role_assignment" "contract_finance_reads_sales" {
-  for_each     = module.solution["sales"].workspace_ids
+  for_each = (contains(tolist(local.solutions), "sales")
+    && contains(tolist(local.solutions), "finance")
+  ) ? module.solution["sales"].workspace_ids : {}
   workspace_id = each.value
   principal = {
     id   = module.solution["finance"].deploy_principal_id

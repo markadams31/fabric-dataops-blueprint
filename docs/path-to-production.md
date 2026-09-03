@@ -105,7 +105,21 @@ flowchart LR
 - **Verify** — prove it worked before the bundle is allowed any further.
 
 Promotion re-deploys the *same* bundle to the next environment; nothing is rebuilt
-between environments.
+between environments. The scheduled production run follows the same rule: it reads the
+Deployments ledger for the commit prod was promoted at and operates *that* tree, so a
+merge to `main` cannot reach production by way of the nightly job.
+
+Three honest limits of the bundle:
+
+- **Deployment is not atomic.** Items publish, then dbt rebuilds the marts. A dbt failure
+  in the middle leaves published definitions over marts that have not caught up; the
+  remediation is to fix forward or promote the previous bundle, and the nightly run will
+  not repair it on its own.
+- **Bundles expire.** They are GitHub Actions artefacts, kept 90 days on a public
+  repository, so "roll back to any earlier run" has a horizon. Past it, rebuild at that
+  commit: the digest is derived from source alone, so the bundle reproduces byte for byte.
+- **The bundle carries definitions, not data.** Sample seeding reads the checkout, and no
+  data ever travels between environments.
 
 
 ## Where this design diverges from Microsoft's guidance
@@ -123,8 +137,9 @@ decision that guidance frames, the choice and its trade-off are recorded here.
 | A separate Terraform configuration per environment, so a dev mistake cannot touch prod | One configuration and state file spanning all environments | Workspaces are cattle here: definitions redeploy from Git and a deleted workspace restores within retention. The blast-radius control is the reviewer-gated apply, not state isolation. An estate where workspaces carry irreplaceable state should split the configuration. |
 | The development process anchors on a Git-connected dev workspace (*Update from Git* after each merge, *branch out* from it) | No workspace is Git-connected; dev is a deployment target exactly like test and prod | Every environment is built by the same machinery, so dev cannot drift and what worked in dev is what ships. The cost: developers reach the portal through a self-created branched workspace rather than a one-click *branch out* (note above). |
 | Three release options: deployment pipelines, Git synchronization (a workspace per environment, each synced to a branch), API-driven | API-driven; deployment pipelines argued against in the README; Git-sync not chosen | Git-sync makes environments equal to branches, which reintroduces per-environment drift (cherry-picks, hotfixes to branches) that build-once/promote-many exists to prevent. |
-| Variable libraries should usually be the first choice for parameterization | A hybrid: the Variable Library carries runtime values; fabric-cicd `parameter.yml` rewrites what libraries cannot reach (semantic-model TMDL, notebook metadata) | Microsoft's own dependency-binding matrix shows semantic-model connections never auto-bind — a library cannot rebind them. `parameter.yml` is the sanctioned home for exactly those rewrites, enforced by a repository guard. |
+| Variable libraries should usually be the first choice for parameterization | `parameter.yml` rewrites do the work; the Variable Library is deployed and its per-environment value set activated, but nothing reads it at runtime | Two limits, both found by testing. Microsoft's own dependency-binding matrix shows semantic-model connections never auto-bind, so a library cannot rebind them — `parameter.yml` is the sanctioned home for those rewrites, enforced by a repository guard. And `notebookutils.variableLibrary` has no service-principal support, so code deployed by this pipeline cannot read a library at all. The library stays as the shape a solution grows into when that support lands. |
 | Data refresh via `.schedules` files inside item definitions | A GitHub Actions cron drives ingestion and transformation | The schedule must sequence capacity resume → ingest → dbt → tests and open an issue on failure; an in-item schedule can do none of that, and would fire against a paused capacity. |
+| Least privilege for every automated caller | The platform identity keeps a `refs/heads/main` federated credential and runs the nightly schedule | Terraform must be able to plan from `main` before an environment gate exists to approve it, and only an identity with Azure rights can resume the capacity. The blast radius is real and is why `main` takes no direct pushes: reaching that credential means merging a reviewed pull request. |
 
 Terminology, mapped once: what this repository calls a **solution** (a team's product
 plus its per-environment workspaces and delivery config) is the guidance's *Fabric

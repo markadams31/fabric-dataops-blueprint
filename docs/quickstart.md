@@ -140,8 +140,26 @@ until you add people to `grp-<name>-viewers` — including yourself
 
 The `finance` worked example is wired to *this* repository's sales workspaces by
 ID (`solutions/finance/fabric/parameter.yml` — a data contract is explicit,
-versioned wiring). On a fork, replace those IDs with your own — the platform
-apply prints them — or delete the folder until you need a second solution.
+versioned wiring). On a fork, replace those IDs with your own; the workspace IDs
+are in `terraform output solutions`, and the warehouse item ID comes from the
+`sales` workspace once it has been deployed. Deleting `solutions/finance/`
+instead is a supported path — the contract in `platform/terraform/solutions.tf`
+disappears with either end of it.
+
+### Where environment-specific values come from
+
+Three mechanisms, in the order a change meets them:
+
+1. **`parameter.yml`** — fabric-cicd rewrites values inside item definitions as it
+   publishes. Its `dev:`/`test:`/`prod:` keys are matched against the
+   `--environment` passed to `deploy.py`. This is where cross-item wiring lives:
+   SQL endpoints, warehouse IDs, the shortcut contract.
+2. **Variable Library value sets** — fabric-cicd activates the value set whose
+   *name* equals that same environment, which is why the files are `dev.json`,
+   `test.json`, `prod.json`. Deployed and activated, but not yet readable from
+   notebooks run by a service principal.
+3. **Environment variables** — `deploy.py` resolves the warehouse connection at
+   deploy time and passes it to dbt, so no connection string is ever committed.
 
 ## 7. Ship
 

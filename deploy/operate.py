@@ -37,6 +37,10 @@ def main() -> None:
 
     items = get_all(f"{API}/workspaces/{ws['id']}/items", headers)
     nb = next((i for i in items if i["type"] == "Notebook" and i["displayName"].startswith("nb_ingest")), None)
+    if not nb and any(i["type"] == "Notebook" for i in items):
+        # A rename outside the convention would otherwise turn the heartbeat into
+        # a green no-op while ingestion silently stopped running.
+        sys.exit("workspace has notebooks but none named nb_ingest* — ingestion would silently not run")
     if nb:
         print(f"running {nb['displayName']} via the Job Scheduler")
         r = requests.post(f"{API}/workspaces/{ws['id']}/items/{nb['id']}/jobs/instances?jobType=RunNotebook",
@@ -56,7 +60,7 @@ def main() -> None:
             sys.exit("notebook job timed out")
 
     if (pathlib.Path("solutions") / args.solution / "dbt").is_dir():
-        run_dbt(pathlib.Path("solutions") / args.solution, cred, headers, ws["id"], items, args.environment)
+        run_dbt(pathlib.Path("solutions") / args.solution, cred, headers, ws["id"], items)
     print("operate: complete")
 
 
