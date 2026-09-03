@@ -30,8 +30,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ inputs.action || 'pause' }}" = "pause" ]; then
-            BUSY=$(gh api "repos/${{ github.repository }}/actions/runs?status=in_progress&per_page=20"               --jq '[.workflow_runs[] | select(.name=="build" or .name=="promote" or .name=="prod-schedule")] | length')
-            if [ "$BUSY" != "0" ]; then echo "deploys in flight ($BUSY) — skipping pause"; exit 0; fi
+            # Match on workflow PATH, not display name: a rename would silently
+            # empty this check. And a promote waiting on its approval gate is
+            # "waiting", not "in_progress" — approve at 21:00, deploy into a
+            # capacity paused at 20:00.
+            BUSY=0
+            for S in in_progress queued waiting; do
+              N=$(gh api "repos/${{ github.repository }}/actions/runs?status=$S&per_page=30" \
+                --jq '[.workflow_runs[] | select(.path==".github/workflows/build.yml" or .path==".github/workflows/promote.yml" or .path==".github/workflows/prod-schedule.yml")] | length')
+              BUSY=$((BUSY + N))
+            done
+            if [ "$BUSY" != "0" ]; then echo "deploys in flight or awaiting approval ($BUSY) — skipping pause"; exit 0; fi
           fi
           BASE="https://management.azure.com/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.FABRIC_RESOURCE_GROUP }}/providers/Microsoft.Fabric/capacities/${{ vars.FABRIC_CAPACITY_NAME }}"
           ACTION="${{ inputs.action || 'pause' }}"

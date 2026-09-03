@@ -1,5 +1,11 @@
 # The production heartbeat: resume the capacity, run ingestion and rebuild the
-# marts with their tests, as the platform identity. Failures open an issue.
+# marts with their tests. Failures open an issue.
+#
+# It operates the commit prod is *running*, not main: the Deployments ledger says
+# which commit was last promoted, and a bundle's digest is derived from source
+# alone, so that commit's tree is the deployed bundle's content. Without this the
+# schedule would rebuild prod's marts from unpromoted code every night — the
+# approval gates bypassed by the very machinery meant to respect them.
 name: prod-schedule
 on:
   schedule:
@@ -20,7 +26,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: ls
         run: |
-          list=$(ls -d solutions/*/ | xargs -n1 basename | grep -vx '_template' | grep -Ex '[a-z][a-z0-9-]+' | jq -R . | jq -sc .)
+          list=$(ls -d solutions/*/ | xargs -n1 basename | grep -vx '_template' | grep -Ex '[a-z][a-z0-9]+' | jq -R . | jq -sc .)
           echo "list=$list" >> "$GITHUB_OUTPUT"
 
   operate:
@@ -34,23 +40,53 @@ jobs:
     concurrency: deploy-${{ matrix.solution }}-prod
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - id: promoted
+        name: resolve the commit ${{ matrix.solution }} runs in prod
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOLUTION: ${{ matrix.solution }}
+        run: |
+          set -euo pipefail
+          sha=""
+          for d in $(gh api "repos/${{ github.repository }}/deployments?environment=$SOLUTION-prod&per_page=20" --jq '.[].id'); do
+            if [ "$(gh api "repos/${{ github.repository }}/deployments/$d/statuses?per_page=1" --jq '.[0].state // empty')" = "success" ]; then
+              sha=$(gh api "repos/${{ github.repository }}/deployments/$d" --jq .sha); break
+            fi
+          done
+          if [ -z "$sha" ]; then
+            echo "$SOLUTION has never been promoted to prod — nothing to operate"
+          else
+            echo "prod runs $sha"
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - if: steps.promoted.outputs.sha != ''
+        run: |
+          git fetch --depth 1 origin ${{ steps.promoted.outputs.sha }}
+          git checkout -q FETCH_HEAD
+      - if: steps.promoted.outputs.sha != ''
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.9.26"
-      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+      - if: steps.promoted.outputs.sha != ''
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID_PLATFORM }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: resume capacity
+        if: steps.promoted.outputs.sha != ''
         run: |
           az rest --method post --url "https://management.azure.com/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.FABRIC_RESOURCE_GROUP }}/providers/Microsoft.Fabric/capacities/${{ vars.FABRIC_CAPACITY_NAME }}/resume?api-version=2023-11-01" -o none 2>/dev/null || true
           for i in $(seq 1 30); do
             S=$(az rest --method get --url "https://management.azure.com/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.FABRIC_RESOURCE_GROUP }}/providers/Microsoft.Fabric/capacities/${{ vars.FABRIC_CAPACITY_NAME }}?api-version=2023-11-01" --query properties.state -o tsv)
             [ "$S" = "Active" ] && break; sleep 5
-          done; echo "capacity: $S"
-      - run: uv sync --frozen --no-dev
+          done
+          echo "capacity: $S"
+          [ "$S" = "Active" ] || { echo "capacity did not resume — failing here rather than downstream"; exit 1; }
+      - if: steps.promoted.outputs.sha != ''
+        run: uv sync --frozen --no-dev
       - name: operate ${{ matrix.solution }} prod
+        if: steps.promoted.outputs.sha != ''
         run: uv run python deploy/operate.py --solution ${{ matrix.solution }} --environment prod
       - name: notify on failure
         if: failure()

@@ -19,6 +19,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from importlib.metadata import version
 
 import requests
 from azure.identity import AzureCliCredential
@@ -42,8 +43,8 @@ def get_all(url: str, headers: dict) -> list:
 
 
 # Full scope, always: fabric-cicd resolves cross-item references only within one
-# invocation, so partial scopes create broken deploys (see
-# docs/evidence/2026-08-31-trial-spikes.md). The library
+# invocation, so partial scopes create broken deploys (live-verified; see the
+# evidence register in CLAUDE.md). The library
 # owns the list — hardcoding a copy here would silently go stale as Fabric adds
 # item types (the enum grew to 30 while this repo was being built).
 ITEM_TYPES = list(constants.ACCEPTED_ITEM_TYPES)
@@ -74,6 +75,12 @@ def main() -> None:
     if digest != manifest["content_digest"]:
         sys.exit(f"digest mismatch: bundle={digest} manifest={manifest['content_digest']}")
     print(f"bundle verified: {manifest['solution']}@{manifest['source_sha'][:12]} digest ok")
+    built_with = manifest.get("tools", {}).get("fabric-cicd")
+    if built_with and built_with != version("fabric-cicd"):
+        # The bundle is immutable; the toolchain deploying it is not — a bundle
+        # proven in dev can reach prod under a newer library.
+        print(f"warning: bundle built with fabric-cicd {built_with}, "
+              f"deploying with {version('fabric-cicd')}")
 
     cred = AzureCliCredential()
     token = cred.get_token("https://api.fabric.microsoft.com/.default").token
@@ -128,14 +135,24 @@ def main() -> None:
         # standing in for a real solution's per-environment ingestion. Promotion
         # itself moves definitions only — data never travels between workspaces.
         seed_bronze(cred, headers, ws["id"], live)
-        run_dbt(workdir, cred, headers, ws["id"], live, args.environment)
+        run_dbt(workdir, cred, headers, ws["id"], live)
 
+
+
+def one(items, item_type: str, prefix: str):
+    """Pick an item by type and name prefix. API order is unspecified, so
+    "the first Lakehouse" silently becomes a coin flip once a solution has two."""
+    found = [i for i in items if i["type"] == item_type and i["displayName"].startswith(prefix)]
+    if len(found) != 1:
+        names = [i["displayName"] for i in items if i["type"] == item_type]
+        sys.exit(f"expected exactly one {item_type} named {prefix}* — found {names}")
+    return found[0]
 
 
 def seed_bronze(cred, headers, ws_id, items) -> None:
     """Upload the committed sample files into the Bronze lakehouse (demo
     ingestion — a real solution replaces this with its own sources)."""
-    lh = next(i for i in items if i["type"] == "Lakehouse")
+    lh = one(items, "Lakehouse", "lh_")
     sto = {"Authorization": "Bearer "
            + cred.get_token("https://storage.azure.com/.default").token}
     for f in sorted(pathlib.Path("samples/data").glob("*.csv")):
@@ -151,18 +168,17 @@ def seed_bronze(cred, headers, ws_id, items) -> None:
         print(f"seeded {f.name} -> {lh['displayName']}/Files/retail/ ({len(body)} bytes)")
 
 
-def run_dbt(workdir, cred, headers, ws_id, items, environment) -> None:
+def run_dbt(workdir, cred, headers, ws_id, items) -> None:
     """Run every dbt project in the bundle against the solution's warehouse."""
-    lh = next(i for i in items if i["type"] == "Lakehouse")
-    wh = next(i for i in items if i["type"] == "Warehouse")
+    lh = one(items, "Lakehouse", "lh_")
+    wh = one(items, "Warehouse", "wh_")
     props = requests.get(f"{API}/workspaces/{ws_id}/warehouses/{wh['id']}",
                          headers=headers, timeout=60).json()
     env = {**os.environ,
            "DBT_FABRIC_SERVER": props["properties"]["connectionString"],
            "DBT_FABRIC_DATABASE": wh["displayName"],
            "DBT_LAKEHOUSE_FILES": (f"abfss://{ws_id}@onelake.dfs.fabric.microsoft.com"
-                                   f"/{lh['id']}/Files"),
-           "DBT_TARGET_ENV": environment}
+                                   f"/{lh['id']}/Files")}
     for project in sorted((workdir / "dbt").iterdir()):
         if not project.is_dir():
             continue

@@ -9,11 +9,12 @@ lives in README.md and docs/ — nothing here is needed to *use* the blueprint.
   `uv run python deploy/guards.py`. The `validate` check is required by the
   protect-main ruleset and there is no bypass — everything lands through a PR.
 - Solutions, matrices and identities derive from `solutions/*/` folders (names
-  must match `[a-z][a-z0-9-]+`). Never hand-maintain a list a derivation rule
+  must match `[a-z][a-z0-9]+` — no hyphens, because the name becomes a GitHub
+  variable name). Never hand-maintain a list a derivation rule
   already produces.
 - Docs trail code: nothing is documented before it exists and has been run
-  live. The test behind every load-bearing claim goes in `docs/evidence/` as a
-  dated, immutable file.
+  live. What each round of live testing settled goes in the evidence register
+  below, not into dated files in the tree.
 - Mermaid on GitHub strips `<...>` as HTML — write literal angle brackets as
   `#60;` / `#62;`. Diagram colour vocabulary: gold = source of truth / the
   bundle, green = writable by you, blue = pipeline-owned.

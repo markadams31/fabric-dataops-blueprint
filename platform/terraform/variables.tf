@@ -91,11 +91,11 @@ locals {
   # The IDs protect the trust against account/repo rename-and-recreate attacks.
   github_oidc_repo = format("%s@%s/%s@%s",
     split("/", var.github_repository)[0], var.github_owner_id,
-    split("/", var.github_repository)[1], var.github_repository_id)
+  split("/", var.github_repository)[1], var.github_repository_id)
 
   # Naming standard, not configuration (docs/quickstart.md step 4 relies on these).
-  automation_group = "grp-fabric-automation"           # scopes the SPN-API and GitHub tenant settings
-  creators_group   = "grp-fabric-workspace-creators"   # gets Contributor permissions on the capacity
+  automation_group = "grp-fabric-automation"         # scopes the SPN-API and GitHub tenant settings
+  creators_group   = "grp-fabric-workspace-creators" # gets Contributor permissions on the capacity
 
   tfstate_container_scope = "/subscriptions/${var.tfstate_subscription_id}/resourceGroups/${var.tfstate_resource_group}/providers/Microsoft.Storage/storageAccounts/${var.tfstate_storage_account}/blobServices/default/containers/${var.tfstate_container}"
 }

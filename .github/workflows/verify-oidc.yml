@@ -42,5 +42,8 @@ jobs:
           [ -n "$WS_ID" ] || { echo "workspace creation FAILED"; exit 1; }
 
           echo "== delete workspace =="
-          api -X DELETE "https://api.fabric.microsoft.com/v1/workspaces/$WS_ID" -o /dev/null -w "delete HTTP %{http_code}\n"
+          CODE=$(api -X DELETE "https://api.fabric.microsoft.com/v1/workspaces/$WS_ID" -o /dev/null -w "%{http_code}")
+          echo "delete HTTP $CODE"
+          # curl exits 0 on 4xx: unchecked, a broken delete leaks a workspace per run.
+          [ "$CODE" -lt 300 ] || { echo "workspace delete FAILED — zz-spike-s27 leaked"; exit 1; }
           echo "VERDICT: platform identity created and deleted a workspace via capacity contributor rights"

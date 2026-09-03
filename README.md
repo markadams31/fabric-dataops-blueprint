@@ -50,7 +50,7 @@ solutions exchange data only through OneLake shortcuts.
 | Layer | Per solution | Shared | Owned by |
 |---|---|---|---|
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
-| Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models, reports and a Variable Library — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
+| Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
 | People | The team holds Viewer on its shared workspaces and authors locally or in a branched workspace; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
@@ -76,7 +76,11 @@ flowchart LR
 Developers commit and merge changes to the repository, GitHub Actions applies those changes using two identities with two jobs:
 - `mi-fabric-platform` creates workspaces and grants access,
 - `mi-deploy-<solution>` changes what is inside them.
-Nothing else writes to a shared workspace.
+
+No human writes to a shared workspace, and a solution's identity can write only to that solution's
+workspaces — so a compromised deployment reaches one team's data and no part of the platform. The one
+crossing: scheduled operations run as the platform identity, because only it can resume a paused
+capacity. It moves *data* on a published definition; it never publishes.
 
 ## Different components, the same phases
 
@@ -112,6 +116,29 @@ solutions/    one folder per solution: Fabric item definitions, dbt project, dep
 docs/         quickstart · the path to production
 samples/      synthetic retail data that the whole repository teaches from
 ```
+
+## Try it without a tenant
+
+Validate and build are cloud-free by construction — that is what makes a pull request cheap. With
+`uv` installed you can run the whole offline half in a minute:
+
+```bash
+uv sync                                        # pinned toolchain
+uv run pytest -q                               # the guards' failing fixtures
+uv run python deploy/guards.py                 # the five repository guards
+uv run python deploy/build.py --solution sales --sha demo
+```
+
+The last command writes `dist/sales-demo.tar.gz` and a `release-manifest.json` whose
+`content_digest` is derived from the source alone — build it twice, get the same digest. That
+reproducibility is what lets promotion move bytes instead of rebuilding them.
+
+## What it costs
+
+An F2 capacity bills about US$0.36/hour while running and nothing while paused. This repository
+pauses nightly and resumes for the scheduled run, which lands it near US$20–25/month; the Terraform
+apply includes a budget alert at US$25 as a backstop. Deploys and dbt need the capacity running —
+the `capacity` workflow is the resume button.
 
 Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md);
 adopting it — [the quickstart](docs/quickstart.md); maintaining it — the maintainer notes in [CLAUDE.md](CLAUDE.md).

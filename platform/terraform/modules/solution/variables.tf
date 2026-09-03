@@ -2,7 +2,9 @@ variable "name" {
   description = "Solution name — the folder name under solutions/."
   type        = string
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{1,30}$", var.name))
+    # No hyphens: a solution name becomes a GitHub variable name
+    # (AZURE_CLIENT_ID_<NAME>), and those cannot contain them.
+    condition     = can(regex("^[a-z][a-z0-9]{1,30}$", var.name))
     error_message = "Solution names are lowercase letters, digits and hyphens, starting with a letter."
   }
 }
