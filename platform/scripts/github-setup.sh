@@ -142,7 +142,8 @@ terraform -chdir="$HERE/../terraform" output -json solutions 2>/dev/null | jq -r
       else payload="{\"reviewers\": [{\"type\": \"User\", \"id\": $MY_ID}], \"deployment_branch_policy\": {\"protected_branches\": false, \"custom_branch_policies\": true}}"
       fi
       say "+  environment $name-$env"
-      echo "$payload" | gh api --silent -X PUT "repos/$GITHUB_REPO/environments/$name-$env" --input -
+      echo "$payload" | gh api --silent -X PUT "repos/$GITHUB_REPO/environments/$name-$env" --input - 2>/dev/null \
+        || { warn "environment $name-$env unavailable while private — re-run once public"; continue; }
       gh api "repos/$GITHUB_REPO/environments/$name-$env/deployment-branch-policies"           --jq '.branch_policies[].name' 2>/dev/null | grep -qx main         || gh api --silent -X POST "repos/$GITHUB_REPO/environments/$name-$env/deployment-branch-policies"              -f name=main -f type=branch
     done
   done
