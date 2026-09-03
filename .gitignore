@@ -1,0 +1,27 @@
+# Terraform — local values are identifiers only, but keep them out of a public repo
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+*.backend.hcl
+!*.backend.hcl.example
+
+# Python
+.venv/
+__pycache__/
+.ruff_cache/
+
+# Build output
+dist/
+
+# Secrets that must never exist here at all (defence in depth)
+*.secrets.json
+*.pem
+*.pfx
+
+# dbt local artifacts
+target/
+dbt_packages/
+logs/
+.user.yml

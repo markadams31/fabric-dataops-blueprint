@@ -1,0 +1,15 @@
+# fabric-cicd config-based deployment (deploy_with_config). The workspace and
+# repository directory are injected per solution at run time (config_override);
+# what lives here is policy: never unpublish implicitly, shortcuts deploy as code.
+core:
+  workspace: OVERRIDDEN_AT_RUNTIME
+  repository_directory: OVERRIDDEN_AT_RUNTIME
+
+publish: {}
+
+# Orphan deletion is an explicit, gated decision — never a side effect.
+unpublish:
+  skip: true
+
+features:
+  - enable_shortcut_publish

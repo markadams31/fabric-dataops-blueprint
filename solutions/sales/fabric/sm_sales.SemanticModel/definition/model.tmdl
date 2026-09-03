@@ -1,0 +1,14 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+
+ref table dim_customers
+ref table fct_orders
+
+expression DatabaseQuery =
+		let
+		    database = Sql.Database("SALES_WAREHOUSE_ENDPOINT", "SALES_WAREHOUSE_ID")
+		in
+		    database
+	lineageTag: 0d2a0c6f-1a2b-4c3d-8e9f-a1b2c3d4e5f6

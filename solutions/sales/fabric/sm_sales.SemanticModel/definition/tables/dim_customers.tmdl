@@ -1,0 +1,45 @@
+table dim_customers
+	lineageTag: 6f3278a5-5391-437c-9ab9-a3c4ed276dba
+
+	column customer_id
+		dataType: int64
+		lineageTag: a49f7779-5b76-405b-a773-ed6a52deaf0d
+		summarizeBy: none
+		sourceColumn: customer_id
+
+	column first_name
+		dataType: string
+		lineageTag: beb755c5-1390-4008-99b4-f02b1ded9fc6
+		summarizeBy: none
+		sourceColumn: first_name
+
+	column last_name
+		dataType: string
+		lineageTag: f2cbb5a2-ad7c-44ce-a859-bec74aa2512a
+		summarizeBy: none
+		sourceColumn: last_name
+
+	column first_order_date
+		dataType: dateTime
+		lineageTag: a832959e-7cf4-4fc1-a09e-3682951ba91b
+		summarizeBy: none
+		sourceColumn: first_order_date
+
+	column most_recent_order_date
+		dataType: dateTime
+		lineageTag: 88aa6716-65ae-477b-9230-fe0c856379f1
+		summarizeBy: none
+		sourceColumn: most_recent_order_date
+
+	column number_of_orders
+		dataType: int64
+		lineageTag: 2eaf90c8-02d8-4881-906e-62e6f510760a
+		summarizeBy: none
+		sourceColumn: number_of_orders
+
+	partition dim_customers = entity
+		mode: directLake
+		source
+			entityName: dim_customers
+			schemaName: gold
+			expressionSource: DatabaseQuery

@@ -1,0 +1,75 @@
+# Control-plane Terraform, run as mi-fabric-platform via OIDC — no secrets.
+# Dispatch with action=plan to review, action=apply to converge. Values come from
+# repository variables and GitHub's own context; nothing is committed or stored.
+name: platform-terraform
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: plan or apply
+        type: choice
+        options: [plan, apply]
+        default: plan
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency: platform-terraform
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    # The platform identity is the most powerful credential here — infrastructure
+    # changes wait for the platform environment's required reviewer.
+    environment: platform
+    defaults:
+      run:
+        working-directory: platform/terraform
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_PLATFORM }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      FABRIC_USE_OIDC: "true"
+      FABRIC_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_PLATFORM }}
+      FABRIC_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      TF_VAR_fabric_use_cli: "false"
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_location: ${{ vars.LOCATION }}
+      TF_VAR_resource_group_name: ${{ vars.FABRIC_RESOURCE_GROUP }}
+      TF_VAR_capacity_name: ${{ vars.FABRIC_CAPACITY_NAME }}
+      TF_VAR_capacity_admins: ${{ vars.FABRIC_CAPACITY_ADMINS }}
+      TF_VAR_budget_email: ${{ vars.BUDGET_EMAIL }}
+      TF_VAR_budget_start_date: ${{ vars.BUDGET_START_DATE }}
+      TF_VAR_github_repository: ${{ github.repository }}
+      TF_VAR_github_owner_id: ${{ github.repository_owner_id }}
+      TF_VAR_github_repository_id: ${{ github.repository_id }}
+      TF_VAR_tfstate_subscription_id: ${{ vars.TFSTATE_SUBSCRIPTION_ID }}
+      TF_VAR_tfstate_resource_group: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+      TF_VAR_tfstate_storage_account: ${{ vars.TFSTATE_ACCOUNT }}
+      TF_VAR_tfstate_container: ${{ vars.TFSTATE_CONTAINER }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+
+      - name: init
+        run: |
+          terraform init -input=false \
+            -backend-config="subscription_id=${{ vars.TFSTATE_SUBSCRIPTION_ID }}" \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=platform.tfstate"
+
+      - name: validate
+        run: terraform validate
+
+      - name: plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false tfplan

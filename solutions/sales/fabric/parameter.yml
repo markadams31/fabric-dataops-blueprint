@@ -1,0 +1,17 @@
+# Environment rebinding for values Fabric cannot auto-bind (see the official
+# dependency-binding matrix): the semantic model's Direct Lake connection.
+# Placeholders in model.tmdl become the target workspace's real endpoint and
+# warehouse at deploy time via fabric-cicd dynamic variables.
+find_replace:
+    - find_value: "SALES_WAREHOUSE_ENDPOINT"
+      replace_value:
+        dev: "$items.Warehouse.wh_analytics.$sqlendpoint"
+        test: "$items.Warehouse.wh_analytics.$sqlendpoint"
+        prod: "$items.Warehouse.wh_analytics.$sqlendpoint"
+      file_path: "/sm_sales.SemanticModel/definition/model.tmdl"
+    - find_value: "SALES_WAREHOUSE_ID"
+      replace_value:
+        dev: "$items.Warehouse.wh_analytics.$id"
+        test: "$items.Warehouse.wh_analytics.$id"
+        prod: "$items.Warehouse.wh_analytics.$id"
+      file_path: "/sm_sales.SemanticModel/definition/model.tmdl"

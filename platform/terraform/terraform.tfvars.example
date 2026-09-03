@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. Identifiers only — no secrets.
+subscription_id         = "<subscription-id>"
+location                = "australiaeast"
+resource_group_name     = "rg-fabric-dataops-ae"
+capacity_name           = "fabdataopsae"
+capacity_admins         = ["<fabric-admin>@<tenant>.onmicrosoft.com"]
+budget_email            = "<you>@example.com"
+budget_start_date       = "2026-09-01T00:00:00Z" # first of the month you start
+github_repository       = "<owner>/fabric-dataops-blueprint"
+github_owner_id         = "<gh api users/OWNER --jq .id>"
+github_repository_id    = "<gh api repos/OWNER/REPO --jq .id>"
+tfstate_subscription_id = "<subscription-id>"
+tfstate_resource_group  = "<rg-of-state-account>"
+tfstate_storage_account = "<state-storage-account>"
+tfstate_container       = "tfstate-fabric-dataops"

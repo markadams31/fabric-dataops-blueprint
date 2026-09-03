@@ -1,0 +1,120 @@
+# Fabric DataOps Blueprint
+
+In organisations that adopt modern software practices, the production environment is not a place users can directly edit.  
+It is the result of running processes against source code. Change the source, run the processes, and you get a new production.
+Most Fabric estates are not operated this way. Instead, changes are made to items in place.
+
+This repository explores the adoption of Microsoft Fabric based on one key principle: **code is the source of truth**.
+The beneficial implications that flow from this core foundation include:
+- **History.** In the service, an overwritten report is gone. In Git, every version is kept, and restoring one is a redeploy.
+- **Consistency.** Every environment is built from the same source.
+- **Traceability.** The pull request records who changed what, the reasoning, and who approved it.
+- **Reliability.** Changes are tested before reaching production.
+- **Scalability.** Adding a team's solution is configuration, not a project. The fiftieth runs with the same pipelines, checks, and tests as the first.
+
+This design is intended for large enterprises that want to manage a data estate at scale with confidence.
+
+One caveat: code rebuilds definitions, not data.  Where a table holds history the upstream no
+longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such.
+
+## Choosing a release process
+
+Microsoft's guidance names [three ways to release changes to Fabric workspaces](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd),
+and this repository deliberately takes the most involved one. The choice, honestly:
+
+**Deployment pipelines** — Fabric's native promotion tool. A [deployment pipeline](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/intro-to-deployment-pipelines)
+chains workspaces into stages and, on request, copies the items in one stage over the paired items in the
+next. It needs no setup beyond the portal, shows a comparison of stages before you deploy, keeps a deployment history,
+and can be driven by API. Microsoft positions it as the lowest-effort option that's a good fit for
+[small-to-medium projects focused on semantic models and reports](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd#how-can-you-automate-fabric-ci-cd).
+For a team whose estate is a handful of Power BI items it may be all you need. It falls short of the standard set
+out above once an estate grows: the source of truth is the `dev` workspace rather than the repository, nothing is
+tested in transit, whoever promotes to production can also edit it, and item coverage is partial — see Microsoft's own
+[considerations and limitations](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/understand-the-deployment-process#considerations-and-limitations).
+
+**Git synchronization** — a branch per environment, each workspace updated from its own branch. Everything is
+visible in Git, but environments *become* branches: a change travels between them as cherry-picks, drift between
+environments returns, and no single tested artefact moves through the stages.
+
+**API-driven** — build once from `main`, deploy the same immutable bundle to every environment with
+[fabric-cicd](https://github.com/microsoft/fabric-cicd). The source of truth is the repository, changes are tested
+in transit, and environments are byte-identical by construction. It is the highest-effort option; paying that cost
+well is what the rest of this repository demonstrates.
+
+## The unit of work: a solution
+
+The repository's unit of work is what it calls a **solution** - one team's product with a `dev` → `test` → `prod` set of
+workspaces and one folder under `solutions/`. The platform hosts as many solutions as you need on shared capacity, and
+solutions exchange data only through OneLake shortcuts.
+
+| Layer | Per solution | Shared | Owned by |
+|---|---|---|---|
+| Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
+| Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models, reports and a Variable Library — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
+| Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
+| People | The team holds Viewer on its shared workspaces and authors locally or in a branched workspace; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
+
+Adding a solution is one folder copied from `solutions/_template` — everything else is derived from it.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    DEV["Developers"] -->|"pull request"| REPO["GitHub repository<br/>the only source of truth"]
+    REPO -->|"merge · promote"| ACT["GitHub Actions<br/>OIDC, no secrets"]
+    ACT -->|"as mi-fabric-platform"| TF["Terraform<br/>workspaces · access"]
+    ACT -->|"as mi-deploy-#60;solution#62;"| CD["fabric-cicd + dbt<br/>items · tables · tests"]
+    TF --> WS["Solution workspaces<br/>dev → test → prod"]
+    CD --> WS
+    WS --> USERS["Consumers<br/>Viewer"]
+    classDef gold fill:#fff8e1,stroke:#f59e0b,stroke-width:2px
+    classDef blue fill:#eff6ff,stroke:#2563eb,stroke-width:2px
+    class REPO gold
+    class WS blue
+```
+
+Developers commit and merge changes to the repository, GitHub Actions applies those changes using two identities with two jobs:
+- `mi-fabric-platform` creates workspaces and grants access,
+- `mi-deploy-<solution>` changes what is inside them.
+Nothing else writes to a shared workspace.
+
+## Different components, the same phases
+
+A solution mixes different types of item — reports, semantic models, notebooks, transformation code, sometimes a
+database — and each type has its own idea of what "build" and "test" mean. Rather than flattening those differences,
+the design gives every component the same four phases and lets each type implement them its own way:
+
+- **Validate** — checks that run in the pull request with no cloud access: linting, format locks, report and model rules.
+- **Build** — produce the deployable artefact: a bundle of item definitions, a parsed dbt project.
+- **Deploy** — apply that artefact to one environment: fabric-cicd publish, `dbt build`.
+- **Verify** — prove it worked: item counts, dbt's own tests, smoke queries.
+
+The repository's scope is deliberately the set of items fabric-cicd can deploy, plus dbt for transformation — which
+is very nearly the set of things Fabric allows to be deployed as code at all.
+A solution's components are declared by its folders — the directory name is the component type — and the workflows
+run the phases in dependency order, knowing nothing about the tools. Another component of an existing type is a folder.
+A new *type* — Airflow, a Fabric App — is one implementation of the four phases.
+
+## Quickstart
+
+From fork to a running platform in eight steps — the first five are a human with a laptop, once; everything after is a pull request.
+The walkthrough lives in [docs/quickstart.md](docs/quickstart.md).
+
+## Where things live
+
+```
+platform/     Terraform — capacities and the solution module: workspaces, roles, identities, connections
+solutions/    one folder per solution: Fabric item definitions, dbt project, deploy config
+  _template/  what a new solution starts from
+  sales/      the worked example
+  finance/    a second solution, reading sales' gold tables through a OneLake shortcut contract
+.github/      CI — one workflow per concern: validate pull requests, build and deploy, platform Terraform
+docs/         quickstart · the path to production · the watch-list · evidence from live testing
+samples/      synthetic retail data that the whole repository teaches from
+```
+
+Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md);
+adopting it — [the quickstart](docs/quickstart.md); maintaining it — [the watch-list](docs/watch-list.md),
+with the live test behind every load-bearing claim in [docs/evidence](docs/evidence/README.md).
+
+MIT-licensed. One maintainer, best effort.

@@ -1,0 +1,38 @@
+# Everything a pull request must prove, with no cloud access: the same commands
+# a developer can run locally with uv run.
+name: pr-validation
+on: pull_request
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.9.26"
+      - run: uv sync --frozen
+      - name: ruff
+        run: uv run ruff check .
+      - name: tests
+        run: uv run pytest -q
+      - name: guards
+        run: uv run python deploy/guards.py
+      - name: dbt parse (offline)
+        env:
+          DBT_FABRIC_SERVER: placeholder.datawarehouse.fabric.microsoft.com
+          DBT_FABRIC_DATABASE: placeholder
+          DBT_LAKEHOUSE_FILES: abfss://placeholder@onelake.dfs.fabric.microsoft.com/placeholder/Files
+        run: |
+          for project in solutions/*/dbt/*/; do
+            echo "== $project"
+            uv run dbt parse --no-use-colors --profiles-dir "$project" --project-dir "$project"
+          done

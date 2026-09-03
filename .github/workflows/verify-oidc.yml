@@ -1,0 +1,46 @@
+# Proves the platform identity works end to end, with no secrets: GitHub OIDC ->
+# Entra federated credential -> Azure CLI -> Fabric API. Creates and deletes a
+# throwaway workspace on the capacity, which exercises the whole permission chain:
+# SPN tenant settings (scoped to grp-fabric-automation), group membership, and the
+# capacity Contributor permissions granted to grp-fabric-workspace-creators.
+name: verify-oidc
+on: workflow_dispatch
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  platform-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_PLATFORM }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create and delete a workspace as the platform identity
+        env:
+          CAPACITY_NAME: ${{ vars.FABRIC_CAPACITY_NAME }}
+        run: |
+          set -euo pipefail
+          TOKEN=$(az account get-access-token --resource https://api.fabric.microsoft.com --query accessToken -o tsv)
+          api() { curl -sS -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" "$@"; }
+
+          echo "== capacities visible to the identity =="
+          CAPS=$(api https://api.fabric.microsoft.com/v1/capacities)
+          echo "$CAPS" | jq '.value[] | {id, displayName, sku, state}'
+          CAP_ID=$(echo "$CAPS" | jq -r --arg n "$CAPACITY_NAME" '.value[] | select(.displayName==$n) | .id')
+          [ -n "$CAP_ID" ] || { echo "capacity $CAPACITY_NAME not visible to the identity"; exit 1; }
+
+          echo "== create workspace zz-spike-s27 =="
+          WS=$(api -X POST https://api.fabric.microsoft.com/v1/workspaces \
+               -d "{\"displayName\":\"zz-spike-s27\",\"capacityId\":\"$CAP_ID\"}")
+          echo "$WS" | jq .
+          WS_ID=$(echo "$WS" | jq -r '.id // empty')
+          [ -n "$WS_ID" ] || { echo "workspace creation FAILED"; exit 1; }
+
+          echo "== delete workspace =="
+          api -X DELETE "https://api.fabric.microsoft.com/v1/workspaces/$WS_ID" -o /dev/null -w "delete HTTP %{http_code}\n"
+          echo "VERDICT: platform identity created and deleted a workspace via capacity contributor rights"

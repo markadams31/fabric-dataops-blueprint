@@ -1,0 +1,13 @@
+[
+  {
+    "path": "Tables",
+    "name": "sales_gold_orders",
+    "target": {
+      "oneLake": {
+        "workspaceId": "SALES_WORKSPACE_ID",
+        "itemId": "SALES_WAREHOUSE_ITEM_ID",
+        "path": "Tables/gold/fct_orders"
+      }
+    }
+  }
+]

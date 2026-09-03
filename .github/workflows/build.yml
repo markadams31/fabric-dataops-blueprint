@@ -1,0 +1,66 @@
+# Build once on every merge: each solution becomes an immutable bundle, deployed
+# to dev in the same run. Promotion later re-deploys the same bundle, never a
+# rebuild. (With one solution the matrix is static; change detection arrives
+# when a second solution does.)
+name: build
+on:
+  push:
+    branches: [main]
+    paths: [solutions/**, deploy/**, .github/workflows/build.yml, .github/workflows/deploy-env.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The matrix is derived from the tree, like everything else about a solution —
+  # adding one is still just a folder.
+  solutions:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.ls.outputs.list }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: ls
+        run: |
+          list=$(ls -d solutions/*/ | xargs -n1 basename | grep -vx '_template' | grep -Ex '[a-z][a-z0-9-]+' | jq -R . | jq -sc .)
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          echo "solutions: $list"
+
+  build:
+    needs: solutions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        solution: ${{ fromJSON(needs.solutions.outputs.list) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.9.26"
+      - run: uv sync --frozen --no-dev
+      - run: uv run python deploy/build.py --solution ${{ matrix.solution }} --sha ${{ github.sha }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.solution }}-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+
+  deploy-dev:
+    needs: [solutions, build]
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    strategy:
+      # One solution's failure must never cancel a sibling mid-deploy.
+      fail-fast: false
+      matrix:
+        solution: ${{ fromJSON(needs.solutions.outputs.list) }}
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      solution: ${{ matrix.solution }}
+      environment: dev
+      artifact: ${{ matrix.solution }}-${{ github.sha }}

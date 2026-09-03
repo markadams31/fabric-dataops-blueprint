@@ -1,0 +1,47 @@
+table fct_orders
+	lineageTag: 4e0b0483-d859-4790-981e-732e9fd81fb9
+
+	measure order_count = COUNTROWS(fct_orders)
+		formatString: #,0
+		lineageTag: 8adbe9d0-6f86-4d97-a263-288e4b39ddca
+
+	measure total_revenue = SUM(fct_orders[order_total])
+		formatString: #,0.00
+		lineageTag: d49c2cc6-b246-49e5-9ed2-4f675fc3f689
+
+	column order_id
+		dataType: int64
+		lineageTag: b2b422a0-1d95-429d-b44a-02a8c988c4ab
+		summarizeBy: none
+		sourceColumn: order_id
+
+	column customer_id
+		dataType: int64
+		lineageTag: 2f027c8a-85ad-431e-90ae-0f857e0b7d85
+		summarizeBy: none
+		sourceColumn: customer_id
+
+	column order_date
+		dataType: dateTime
+		lineageTag: 304096cd-7bc2-40c9-a314-9b62d8e44c40
+		summarizeBy: none
+		sourceColumn: order_date
+
+	column order_status
+		dataType: string
+		lineageTag: 7d793902-5128-46d7-8a13-15f377ec66bc
+		summarizeBy: none
+		sourceColumn: order_status
+
+	column order_total
+		dataType: decimal
+		lineageTag: c5c1a01a-01d9-416d-9b26-b018db97c7e0
+		summarizeBy: none
+		sourceColumn: order_total
+
+	partition fct_orders = entity
+		mode: directLake
+		source
+			entityName: fct_orders
+			schemaName: gold
+			expressionSource: DatabaseQuery

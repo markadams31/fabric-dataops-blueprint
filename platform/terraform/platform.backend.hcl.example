@@ -1,0 +1,7 @@
+# Copy to platform.backend.hcl (git-ignored):
+#   terraform init -backend-config=platform.backend.hcl
+subscription_id      = "<subscription-of-state-account>"
+resource_group_name  = "<rg-of-state-account>"
+storage_account_name = "<state-storage-account>"
+container_name       = "tfstate-fabric-dataops"
+key                  = "platform.tfstate"

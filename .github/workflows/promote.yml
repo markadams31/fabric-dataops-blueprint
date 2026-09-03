@@ -1,0 +1,71 @@
+# Promote a bundle that already proved itself in dev to test, then prod — the
+# identical bytes, nothing rebuilt. Each environment pauses for its reviewers.
+# Rollback is this same workflow pointed at an earlier build run.
+name: promote
+on:
+  workflow_dispatch:
+    inputs:
+      solution:
+        description: solution to promote
+        default: sales
+        required: true
+      run_id:
+        description: build run ID whose bundle to promote (must be green)
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.check.outputs.artifact }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+          SOLUTION: ${{ inputs.solution }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "run_id must be numeric"; exit 1; }
+          [[ "$SOLUTION" =~ ^[a-z][a-z0-9-]*$ ]] || { echo "invalid solution name"; exit 1; }
+          run=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID")
+          conclusion=$(echo "$run" | jq -r .conclusion)
+          path=$(echo "$run" | jq -r .path)
+          branch=$(echo "$run" | jq -r .head_branch)
+          event=$(echo "$run" | jq -r .event)
+          sha=$(echo "$run" | jq -r .head_sha)
+          [ "$conclusion" = "success" ] || { echo "run $RUN_ID concluded '$conclusion' — only green dev-proven builds promote"; exit 1; }
+          [ "$path" = ".github/workflows/build.yml" ] && [ "$branch" = "main" ] || {
+            echo "run $RUN_ID is not a build of main ($path @ $branch) — refusing"; exit 1; }
+          echo "artifact=$SOLUTION-$sha" >> "$GITHUB_OUTPUT"
+          echo "promoting $SOLUTION-$sha from run $RUN_ID ($event on $branch)"
+
+  test:
+    needs: provenance
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      solution: ${{ inputs.solution }}
+      environment: test
+      artifact: ${{ needs.provenance.outputs.artifact }}
+      run_id: ${{ inputs.run_id }}
+
+  prod:
+    needs: [provenance, test]
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      solution: ${{ inputs.solution }}
+      environment: prod
+      artifact: ${{ needs.provenance.outputs.artifact }}
+      run_id: ${{ inputs.run_id }}
