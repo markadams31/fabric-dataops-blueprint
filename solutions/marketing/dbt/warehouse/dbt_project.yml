@@ -1,0 +1,17 @@
+name: warehouse
+version: "0.1"
+profile: warehouse
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+flags:
+  partial_parse: true
+
+models:
+  warehouse:
+    staging:
+      +materialized: table
+      +schema: silver
+    marts:
+      +materialized: table
+      +schema: gold
