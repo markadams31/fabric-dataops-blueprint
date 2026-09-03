@@ -49,9 +49,14 @@ jobs:
           set -euo pipefail
           sha=""
           for d in $(gh api "repos/${{ github.repository }}/deployments?environment=$SOLUTION-prod&per_page=20" --jq '.[].id'); do
-            if [ "$(gh api "repos/${{ github.repository }}/deployments/$d/statuses?per_page=1" --jq '.[0].state // empty')" = "success" ]; then
-              sha=$(gh api "repos/${{ github.repository }}/deployments/$d" --jq .sha); break
-            fi
+            statuses=$(gh api "repos/${{ github.repository }}/deployments/$d/statuses?per_page=20")
+            [ "$(echo "$statuses" | jq -r '[.[] | select(.state=="success")] | length')" != "0" ] || continue
+            # promote records the promoted bundle here; the deployment's own ref
+            # is only the commit promote ran from. Older deployments have no such
+            # status, so fall back to the ref for them.
+            sha=$(echo "$statuses" | jq -r '[.[] | select(.description // "" | startswith("bundle "))][0].description // empty' | cut -d" " -f2)
+            [ -n "$sha" ] || sha=$(gh api "repos/${{ github.repository }}/deployments/$d" --jq .sha)
+            break
           done
           if [ -z "$sha" ]; then
             echo "$SOLUTION has never been promoted to prod — nothing to operate"
