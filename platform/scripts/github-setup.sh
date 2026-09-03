@@ -157,5 +157,25 @@ terraform -chdir="$HERE/../terraform" output -json solutions 2>/dev/null |
     gh variable set "$var" --repo "$GITHUB_REPO" --body "$cid"
   done
 
+# --- 5 · retirement -----------------------------------------------------------
+# Retiring a solution is deleting its folder, so its delivery wiring must go too:
+# a leftover AZURE_CLIENT_ID_* points at an identity that no longer exists, and a
+# leftover environment would silently re-adopt a future solution of the same name.
+LIVE="$(terraform -chdir="$HERE/../terraform" output -json solutions 2>/dev/null | jq -r 'keys[]')"
+gh api "repos/$GITHUB_REPO/environments" --jq '.environments[].name' 2>/dev/null |
+  while read -r env; do
+    [ "$env" = "platform" ] && continue
+    printf '%s\n' "$LIVE" | grep -qx "${env%-*}" && continue
+    say "-  environment $env (solution retired)"
+    gh api --silent -X DELETE "repos/$GITHUB_REPO/environments/$env"
+  done
+gh variable list --repo "$GITHUB_REPO" --json name --jq '.[].name' 2>/dev/null |
+  grep '^AZURE_CLIENT_ID_' | while read -r v; do
+    [ "$v" = "AZURE_CLIENT_ID_PLATFORM" ] && continue
+    printf '%s\n' "$LIVE" | grep -qx "$(echo "${v#AZURE_CLIENT_ID_}" | tr '[:upper:]' '[:lower:]')" && continue
+    say "-  variable $v (solution retired)"
+    gh variable delete "$v" --repo "$GITHUB_REPO"
+  done
+
 say ""
 say "Done: https://github.com/$GITHUB_REPO"

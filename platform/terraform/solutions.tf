@@ -7,9 +7,16 @@ data "fabric_capacity" "platform" {
 }
 
 locals {
+  # Local build artefacts must not conjure a solution: dbt leaves target/, logs/
+  # and .user.yml behind, so a retired folder would still look inhabited to a
+  # local plan and be recreated moments after it was destroyed.
+  artefact_dirs = ["target", "logs", "dbt_packages", "__pycache__"]
+
   solutions = toset([
-    for f in fileset("${path.module}/../../solutions", "**") :
-    split("/", f)[0] if split("/", f)[0] != "_template"
+    for f in fileset("${path.module}/../../solutions", "**") : split("/", f)[0]
+    if split("/", f)[0] != "_template"
+    && length(setintersection(toset(split("/", f)), toset(local.artefact_dirs))) == 0
+    && basename(f) != ".user.yml"
   ])
 }
 
