@@ -33,12 +33,15 @@ jobs:
           [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "run_id must be numeric"; exit 1; }
           [[ "$SOLUTION" =~ ^[a-z][a-z0-9-]*$ ]] || { echo "invalid solution name"; exit 1; }
           run=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID")
-          conclusion=$(echo "$run" | jq -r .conclusion)
           path=$(echo "$run" | jq -r .path)
           branch=$(echo "$run" | jq -r .head_branch)
           event=$(echo "$run" | jq -r .event)
           sha=$(echo "$run" | jq -r .head_sha)
-          [ "$conclusion" = "success" ] || { echo "run $RUN_ID concluded '$conclusion' — only green dev-proven builds promote"; exit 1; }
+          # Per-solution provenance: bundles are per solution, so judge THIS
+          # solution's dev deploy — a sibling solution's red must not freeze it.
+          job=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" --paginate \
+            --jq ".jobs[] | select(.name == \"deploy-dev ($SOLUTION) / deploy\") | .conclusion" | head -1)
+          [ "$job" = "success" ] || { echo "run $RUN_ID: dev deploy for $SOLUTION concluded '${job:-absent}' — only dev-proven bundles promote"; exit 1; }
           [ "$path" = ".github/workflows/build.yml" ] && [ "$branch" = "main" ] || {
             echo "run $RUN_ID is not a build of main ($path @ $branch) — refusing"; exit 1; }
           echo "artifact=$SOLUTION-$sha" >> "$GITHUB_OUTPUT"
