@@ -17,13 +17,13 @@ module "solution" {
   source   = "./modules/solution"
   for_each = local.solutions
 
-  name                  = each.key
-  capacity_id           = data.fabric_capacity.platform.id
-  resource_group_name   = azurerm_resource_group.platform.name
-  location              = azurerm_resource_group.platform.location
-  github_oidc_repo      = local.github_oidc_repo
-  automation_group_id   = azuread_group.automation.object_id
-  platform_principal_id = azurerm_user_assigned_identity.platform.principal_id
+  name                = each.key
+  capacity_id         = data.fabric_capacity.platform.id
+  resource_group_name = azurerm_resource_group.platform.name
+  location            = azurerm_resource_group.platform.location
+  github_oidc_repo    = local.github_oidc_repo
+  automation_group_id = azuread_group.automation.object_id
+  platform_group_id   = azuread_group.platform.object_id
 }
 
 output "solutions" {

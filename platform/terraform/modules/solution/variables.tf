@@ -34,7 +34,7 @@ variable "automation_group_id" {
   type        = string
 }
 
-variable "platform_principal_id" {
-  description = "Principal ID of mi-fabric-platform — Admin on every managed workspace."
+variable "platform_group_id" {
+  description = "Object ID of grp-fabric-platform — Admin on every managed workspace."
   type        = string
 }

@@ -141,6 +141,22 @@ resource "azuread_group" "automation" {
   security_enabled = true
 }
 
+# Workspace Admin for the platform is granted to this group, never to the identity
+# directly: Fabric makes whoever creates a workspace an Admin, and rejects a second
+# role for the same principal. Solutions created by CI (every solution after the
+# first apply) would fail on that duplicate. A group is a distinct principal, so
+# the grant succeeds whoever created the workspace.
+resource "azuread_group" "platform" {
+  display_name     = "grp-fabric-platform"
+  mail_nickname    = "grpfabricplatform"
+  security_enabled = true
+}
+
+resource "azuread_group_member" "platform_platform" {
+  group_object_id  = azuread_group.platform.object_id
+  member_object_id = azurerm_user_assigned_identity.platform.principal_id
+}
+
 resource "azuread_group" "creators" {
   display_name     = local.creators_group
   mail_nickname    = replace(local.creators_group, "-", "")

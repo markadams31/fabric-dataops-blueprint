@@ -49,14 +49,23 @@ resource "azuread_group_member" "deploy_automation" {
   member_object_id = azurerm_user_assigned_identity.deploy.principal_id
 }
 
+# Admin for the platform, via its group. Granting the identity directly fails on
+# any workspace it created itself — Fabric already made the creator an Admin and
+# refuses a second role for the same principal.
 resource "fabric_workspace_role_assignment" "platform_admin" {
   for_each     = fabric_workspace.this
   workspace_id = each.value.id
   principal = {
-    id   = var.platform_principal_id
-    type = "ServicePrincipal"
+    id   = var.platform_group_id
+    type = "Group"
   }
   role = "Admin"
+
+  # Hold the new grant before releasing the old one: this identity operates the
+  # production schedule, and a gap would be a failed heartbeat.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Member: publish items and write data, but not manage access — that stays here.
