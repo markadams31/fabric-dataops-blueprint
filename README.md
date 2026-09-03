@@ -109,11 +109,11 @@ solutions/    one folder per solution: Fabric item definitions, dbt project, dep
   sales/      the worked example
   finance/    a second solution, reading sales' gold tables through a OneLake shortcut contract
 .github/      CI — one workflow per concern: validate pull requests, build and deploy, platform Terraform
-docs/         quickstart · the path to production · the watch-list
+docs/         quickstart · the path to production
 samples/      synthetic retail data that the whole repository teaches from
 ```
 
 Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md);
-adopting it — [the quickstart](docs/quickstart.md); maintaining it — [the watch-list](docs/watch-list.md).
+adopting it — [the quickstart](docs/quickstart.md); maintaining it — the maintainer notes in [CLAUDE.md](CLAUDE.md).
 
 MIT-licensed. One maintainer, best effort.
