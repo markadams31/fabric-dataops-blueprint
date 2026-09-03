@@ -17,3 +17,4 @@ from the project's working notes; the files themselves carry the full context.
 | `2026-09-03-promotion.md` | One bundle byte-identical through dev → test → prod behind approvals; the GitHub Deployments ledger |
 | `2026-09-03-operate.md` | A second solution and its cross-solution shortcut contract live; the Viewer-lacks-OneLake-read over-grant; the production heartbeat with a live Spark run |
 | `2026-09-03-torture.md` | The solution attacked on purpose: live failure probes, an adversarial review, a cold read of the docs, and the Microsoft-guidance alignment audit — with what was fixed and what stays sharp |
+| `2026-09-03-clean-slate-adopter-run.md` | The whole platform destroyed and rebuilt from nothing by following the quickstart as a stranger — the soft-deleted-group trap, and per-solution provenance found and fixed live |
