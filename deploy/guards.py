@@ -123,6 +123,52 @@ def guard_format_lock(root: pathlib.Path) -> list[str]:
     return out
 
 
+def guard_contract_targets(root: pathlib.Path) -> list[str]:
+    """A shortcut into another solution's warehouse must name a table that
+    solution still builds.
+
+    Renaming a mart is invisible to the team that owns it: dbt leaves the old
+    table behind, so the consumer's shortcut keeps resolving and its data
+    quietly stops changing — no error, anywhere, ever. The producer is read
+    from the contract's own placeholder (`SALES_WORKSPACE_ID` names `sales`),
+    which is why contracts are written with placeholders rather than GUIDs.
+    Only schema-qualified warehouse paths are checked; lakehouse shortcuts are
+    free-form.
+    """
+    def models_of(solution: pathlib.Path) -> set[str]:
+        return {p.stem for p in solution.rglob("*.sql")
+                if "dbt" in p.parts and "models" in p.parts}
+
+    out = []
+    for f in sorted(root.rglob("shortcuts.metadata.json")):
+        try:
+            shortcuts = json.loads(f.read_text())
+        except json.JSONDecodeError as e:
+            out.append(f"{f.relative_to(root)}: invalid JSON ({e})")
+            continue
+        for sc in shortcuts if isinstance(shortcuts, list) else []:
+            target = ((sc.get("target") or {}).get("oneLake") or {})
+            parts = str(target.get("path", "")).strip("/").split("/")
+            if len(parts) != 3 or parts[0] != "Tables":
+                continue
+            m = re.fullmatch(r"([A-Z][A-Z0-9]*)_WORKSPACE_ID", str(target.get("workspaceId", "")))
+            if not m:
+                out.append(f"{f.relative_to(root)}: shortcut '{sc.get('name')}' does not name "
+                           f"its producer — use a <PRODUCER>_WORKSPACE_ID placeholder so the "
+                           f"contract can be checked")
+                continue
+            producer = root / m.group(1).lower()
+            if not producer.is_dir():
+                out.append(f"{f.relative_to(root)}: shortcut '{sc.get('name')}' names producer "
+                           f"'{m.group(1).lower()}', which is not a solution in this repository")
+            elif parts[2] not in models_of(producer):
+                out.append(f"{f.relative_to(root)}: shortcut '{sc.get('name')}' targets "
+                           f"{'/'.join(parts)}, but {m.group(1).lower()} builds no model named "
+                           f"'{parts[2]}' — a renamed model leaves this consumer reading a table "
+                           f"that never updates again")
+    return out
+
+
 def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
     """Parse a .platform file; malformed JSON is a violation, not a crash."""
     try:
@@ -135,7 +181,7 @@ def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
 
 
 GUARDS = [guard_unclaimed, guard_logical_ids, guard_platform_names,
-          guard_foreign_guids, guard_format_lock]
+          guard_foreign_guids, guard_format_lock, guard_contract_targets]
 
 
 def run(root: pathlib.Path) -> list[str]:

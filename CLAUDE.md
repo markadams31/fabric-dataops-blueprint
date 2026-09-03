@@ -76,6 +76,16 @@ round of live testing settled:
   rollback is the same workflow pointed at an earlier run.
 - **Operate (09-03):** the Job Scheduler runs notebooks as a managed identity;
   cross-solution reads need the Contributor contract grant.
+- **Team-scale run (09-04):** a third solution was added, promoted and retired
+  while the other two ran. What it exposed: Fabric refuses a second role for a
+  workspace's creator, so granting the platform identity Admin directly fails
+  for every solution CI provisions (fixed — the grant goes through a group); a
+  medallion solution has more than one lakehouse, so `lh_bronze` is the name the
+  tooling depends on; a producer renaming a dbt mart leaves the old table
+  behind, so a consumer's shortcut keeps resolving and its data freezes with no
+  error anywhere (fixed — a guard resolves the producer from the contract's
+  placeholder and checks the model still exists). A data pipeline deployed with
+  no code change, which is the extensibility claim holding up.
 - **Torture + clean-slate rebuild (09-03):** the whole platform was destroyed
   and rebuilt from nothing following the quickstart; both solutions promoted
   through prod. Traps that round found: tenant settings render **soft-deleted
