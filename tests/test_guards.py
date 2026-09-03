@@ -128,3 +128,50 @@ def test_parameter_yml_guids_allowed(tmp_path):
     (tmp_path / "s1" / "fabric" / "parameter.yml").write_text(
         'find_replace:\n  - find_value: "X"\n    replace_value:\n      dev: "12345678-1234-1234-1234-123456789abc"\n')
     assert guards.run(tmp_path) == []
+
+
+def shortcut(tmp_path, consumer, producer_placeholder, target_path):
+    d = tmp_path / consumer / "fabric" / "lh_x.Lakehouse"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / ".platform").write_text(json.dumps({
+        "metadata": {"type": "Lakehouse", "displayName": "lh_x"},
+        "config": {"logicalId": "aaaaaaaa-1111-2222-3333-444444444444"}}))
+    (d / "shortcuts.metadata.json").write_text(json.dumps(
+        [{"path": "Tables", "name": "borrowed",
+          "target": {"oneLake": {"workspaceId": producer_placeholder,
+                                 "itemId": "X_ITEM_ID", "path": target_path}}}]))
+    return d
+
+
+def model(tmp_path, solution, name):
+    m = tmp_path / solution / "dbt" / "warehouse" / "models" / "marts"
+    m.mkdir(parents=True, exist_ok=True)
+    (m / f"{name}.sql").write_text("select 1")
+
+
+def test_contract_target_missing_is_caught(tmp_path):
+    """The producer renamed its mart; the consumer's shortcut now points at a
+    table dbt will never rebuild."""
+    shortcut(tmp_path, "consumer", "PRODUCER_WORKSPACE_ID", "Tables/gold/fct_orders")
+    model(tmp_path, "producer", "fct_orders_daily")
+    assert any("never updates again" in v for v in guards.run(tmp_path))
+
+
+def test_contract_checks_the_named_producer_only(tmp_path):
+    """A same-named model in an unrelated solution must not satisfy the contract."""
+    shortcut(tmp_path, "consumer", "PRODUCER_WORKSPACE_ID", "Tables/gold/fct_orders")
+    model(tmp_path, "producer", "fct_orders_daily")
+    model(tmp_path, "unrelated", "fct_orders")
+    assert any("never updates again" in v for v in guards.run(tmp_path))
+
+
+def test_contract_target_present_is_allowed(tmp_path):
+    shortcut(tmp_path, "consumer", "PRODUCER_WORKSPACE_ID", "Tables/gold/fct_orders")
+    model(tmp_path, "producer", "fct_orders")
+    assert guards.run(tmp_path) == []
+
+
+def test_lakehouse_shortcut_is_not_a_contract(tmp_path):
+    """Two-part paths are lakehouse tables, not dbt output — free-form."""
+    shortcut(tmp_path, "consumer", "PRODUCER_WORKSPACE_ID", "Tables/customers")
+    assert guards.run(tmp_path) == []

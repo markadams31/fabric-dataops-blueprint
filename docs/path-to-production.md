@@ -109,6 +109,13 @@ between environments. The scheduled production run follows the same rule: it rea
 Deployments ledger for the commit prod was promoted at and operates *that* tree, so a
 merge to `main` cannot reach production by way of the nightly job.
 
+Where solutions meet, the contract is checked in the pull request. A shortcut
+into another solution's warehouse names its producer (`SALES_WORKSPACE_ID`) and
+the table it reads, and a repository guard asserts that producer still builds
+that table. Without it the failure is silent: dbt leaves a renamed model's old
+table in place, so the consumer's shortcut keeps resolving and its data simply
+stops changing.
+
 Three honest limits of the bundle:
 
 - **Deployment is not atomic.** Items publish, then dbt rebuilds the marts. A dbt failure
