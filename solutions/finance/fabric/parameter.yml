@@ -3,13 +3,13 @@
 find_replace:
     - find_value: "SALES_WORKSPACE_ID"
       replace_value:
-        dev: "b6131e0b-fbad-4901-b945-03f8cfb6ef27"
-        test: "16f6ea4a-498c-4be2-978a-499e430af7bc"
-        prod: "a3153741-2873-4bc2-894f-a0cb115d8cb7"
+        dev: "4757af85-877a-4bf7-b4e5-90e23836f20c"
+        test: "c743255e-30c8-4ae0-8225-e95b362de59f"
+        prod: "4b2f1d3e-ae1f-4422-9e56-134dd3b39701"
       file_path: "/lh_finance.Lakehouse/shortcuts.metadata.json"
     - find_value: "SALES_WAREHOUSE_ITEM_ID"
       replace_value:
-        dev: "13943868-74b5-48a1-a79b-3ccde5fae600"
-        test: "49c18bad-81ca-4267-bc65-1ac6c406ebda"
-        prod: "d2ac9fb6-e1fd-47a0-b235-ba734a69a6b2"
+        dev: "81042d85-86d3-4263-9b01-df6affa33073"
+        test: "8800f083-5fe3-487a-900f-a64164616853"
+        prod: "ee8c5626-733e-45ac-9f2d-fc31ec7dcd65"
       file_path: "/lh_finance.Lakehouse/shortcuts.metadata.json"
