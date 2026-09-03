@@ -20,7 +20,7 @@ longer has, its state is irreplaceable. Such tables are systems of record and mu
 ## Choosing a release process
 
 Microsoft's guidance names [three ways to release changes to Fabric workspaces](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd),
-and this repository deliberately takes the most involved one. The choice, honestly:
+and this repository deliberately takes the most involved one.
 
 **Deployment pipelines** — Fabric's native promotion tool. A [deployment pipeline](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/intro-to-deployment-pipelines)
 chains workspaces into stages and, on request, copies the items in one stage over the paired items in the
