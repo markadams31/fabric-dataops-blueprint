@@ -27,15 +27,36 @@ from fabric_cicd import constants, deploy_with_config
 
 API = "https://api.fabric.microsoft.com/v1"
 
+
+class TransientAPIError(Exception):
+    """Throttling or a server-side blip — worth retrying, unlike a 403."""
+
+    def __init__(self, message, wait):
+        super().__init__(message)
+        self.wait = wait
+
 def get_all(url: str, headers: dict) -> list:
-    """Fabric list APIs paginate and throttle: follow continuationUri, honor Retry-After."""
+    """Fabric list APIs paginate, throttle, and occasionally time out: follow
+    continuationUri, honor Retry-After, and retry the transient failures rather
+    than losing a whole deploy to one flaky GET."""
     rows: list = []
+    attempts = 0
     while url:
-        r = requests.get(url, headers=headers, timeout=60)
-        if r.status_code == 429:
-            time.sleep(int(r.headers.get("Retry-After", "10")))
+        try:
+            r = requests.get(url, headers=headers, timeout=60)
+            if r.status_code == 429 or r.status_code >= 500:
+                wait = int(r.headers.get("Retry-After", "10"))
+                raise TransientAPIError(f"HTTP {r.status_code}", wait)
+            r.raise_for_status()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError,
+                TransientAPIError) as e:
+            attempts += 1
+            if attempts > 4:
+                raise
+            wait = getattr(e, "wait", 5 * attempts)
+            print(f"transient {e} — retry {attempts}/4 in {wait}s")
+            time.sleep(wait)
             continue
-        r.raise_for_status()
         body = r.json()
         rows += body.get("value", [])
         url = body.get("continuationUri")
@@ -141,7 +162,9 @@ def main() -> None:
 
 def one(items, item_type: str, prefix: str):
     """Pick an item by type and name prefix. API order is unspecified, so
-    "the first Lakehouse" silently becomes a coin flip once a solution has two."""
+    "the first Lakehouse" silently becomes a coin flip once a solution has two —
+    and a medallion solution legitimately has several. The convention names the
+    one that matters: lh_bronze is where raw data lands and dbt reads from."""
     found = [i for i in items if i["type"] == item_type and i["displayName"].startswith(prefix)]
     if len(found) != 1:
         names = [i["displayName"] for i in items if i["type"] == item_type]
@@ -152,7 +175,7 @@ def one(items, item_type: str, prefix: str):
 def seed_bronze(cred, headers, ws_id, items) -> None:
     """Upload the committed sample files into the Bronze lakehouse (demo
     ingestion — a real solution replaces this with its own sources)."""
-    lh = one(items, "Lakehouse", "lh_")
+    lh = one(items, "Lakehouse", "lh_bronze")
     sto = {"Authorization": "Bearer "
            + cred.get_token("https://storage.azure.com/.default").token}
     for f in sorted(pathlib.Path("samples/data").glob("*.csv")):
@@ -170,7 +193,7 @@ def seed_bronze(cred, headers, ws_id, items) -> None:
 
 def run_dbt(workdir, cred, headers, ws_id, items) -> None:
     """Run every dbt project in the bundle against the solution's warehouse."""
-    lh = one(items, "Lakehouse", "lh_")
+    lh = one(items, "Lakehouse", "lh_bronze")
     wh = one(items, "Warehouse", "wh_")
     props = requests.get(f"{API}/workspaces/{ws_id}/warehouses/{wh['id']}",
                          headers=headers, timeout=60).json()

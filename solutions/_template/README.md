@@ -28,3 +28,13 @@ from `solutions/sales/` and give it a fresh UUID instead.
 Conventions cover the normal case — and today they are all there is: nothing reads
 a `solution.yml` yet. When the first real deviation arrives (per-solution approvers,
 at promotion), it becomes an override file containing only that deviation.
+
+## Naming conventions the tooling relies on
+
+Most names are yours. Three are not, because the pipeline finds items by them:
+
+| Name | Why |
+|---|---|
+| `lh_bronze` | Where sample data is seeded and dbt reads its raw files. Other lakehouses (`lh_curated`, …) are free-form. |
+| `wh_*` | The warehouse dbt builds into — exactly one per solution. |
+| `nb_ingest*` | Run by the production schedule. A notebook outside this prefix is never scheduled, and the schedule fails loudly rather than passing quietly. |
