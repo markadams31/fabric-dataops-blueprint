@@ -77,15 +77,32 @@ round of live testing settled:
 - **Operate (09-03):** the Job Scheduler runs notebooks as a managed identity;
   cross-solution reads need the Contributor contract grant.
 - **Team-scale run (09-04):** a third solution was added, promoted and retired
-  while the other two ran. What it exposed: Fabric refuses a second role for a
-  workspace's creator, so granting the platform identity Admin directly fails
-  for every solution CI provisions (fixed — the grant goes through a group); a
-  medallion solution has more than one lakehouse, so `lh_bronze` is the name the
-  tooling depends on; a producer renaming a dbt mart leaves the old table
-  behind, so a consumer's shortcut keeps resolving and its data freezes with no
-  error anywhere (fixed — a guard resolves the producer from the contract's
-  placeholder and checks the model still exists). A data pipeline deployed with
-  no code change, which is the extensibility claim holding up.
+  while the other two kept running. Seven defects, all fixed and all only
+  visible at three solutions or under a rollback:
+  - Fabric refuses a second role for a workspace's *creator*, so granting the
+    platform identity Admin directly failed for every solution CI provisions —
+    the first two worked only because a human created their workspaces. The
+    grant goes through `grp-fabric-platform` now.
+  - A medallion solution has more than one lakehouse; `lh_bronze` is the name
+    the tooling depends on, and other lakehouses are free-form.
+  - A producer renaming a dbt mart leaves the old table behind, so the
+    consumer's shortcut keeps resolving and its data freezes — green
+    everywhere, wrong forever. A guard now resolves the producer from the
+    contract's placeholder and checks the model still exists.
+  - GitHub stamps a deployment with the ref the workflow ran from, so a
+    rollback recorded today's main. Promote records the promoted bundle as a
+    deployment status; the schedule reads that.
+  - Local dbt artefacts (`target/`, `logs/`, `.user.yml`) kept a retired
+    solution's folder alive, and a local plan proposed recreating everything
+    that had just been destroyed.
+  - Retirement left GitHub environments and an `AZURE_CLIENT_ID_*` behind,
+    pointing at a deleted identity. `github-setup.sh` prunes them.
+  - A transient Fabric API timeout crashed a deploy with a raw traceback; list
+    calls retry.
+  A data pipeline — an item type never deployed here before — published with no
+  code change, which is the extensibility claim holding up. What was not
+  retested: two builds dispatched at once (the schedule-versus-promote
+  collision was, and serialised correctly).
 - **Torture + clean-slate rebuild (09-03):** the whole platform was destroyed
   and rebuilt from nothing following the quickstart; both solutions promoted
   through prod. Traps that round found: tenant settings render **soft-deleted
