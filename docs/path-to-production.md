@@ -74,8 +74,8 @@ truth. A personal *My workspace*
 [cannot connect to Git](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations)
 at all. That leaves a temporary workspace of your own, connected to your feature branch —
 which requires rights to create workspaces, and
-[many organisations will not grant them](branched-workspaces.md#before-you-start). Where
-they do, the lifecycle is in [authoring in the portal](branched-workspaces.md).
+[many organisations will not grant them](portal-authoring.md#before-you-start). Where
+they do, the lifecycle is in [authoring in the portal](portal-authoring.md).
 
 Worth naming precisely: Microsoft's
 [branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace)
@@ -83,7 +83,8 @@ is a workspace *linked* to a source workspace, created by **Branch out** from a
 Git-connected one — the link is what gives you the workspace tree, breadcrumbs and a
 Related Branches tab. No workspace here is Git-connected, so that command has nothing to
 branch out from. Creating the workspace and connecting it by hand gives the same isolation
-and the same round trip, but not the relationship.
+and the same round trip, but not the relationship. This repository calls that a **feature
+workspace** so the two are not confused.
 
 ### What you cannot run locally
 
@@ -117,8 +118,8 @@ is the one that decides where a change should start.
 | Item | Author it | Why |
 |---|---|---|
 | dbt models | **Locally** | Not a Fabric item. There is no portal representation to edit |
-| Warehouse | **Locally** | It has no definition at all — `getDefinition` answers `OperationNotSupportedForItemType` — and dbt owns its schema. A Warehouse folder holding only `.platform` makes Fabric reject the *entire* Git sync with `MissingItemDefinitionFiles`, so it cannot even be present in a branched workspace |
-| `.schedules` | **Locally** | Fabric rewrites the line endings, so a portal commit carries whitespace noise whether or not you touched it. It also cannot hold `parameter.yml`'s placeholder in a branched workspace: Fabric validates the schema and a string where a boolean belongs fails with `InvalidArtifactJobSchedulerException` |
+| Warehouse | **Locally** | It has no definition at all — `getDefinition` answers `OperationNotSupportedForItemType` — and dbt owns its schema. A Warehouse folder holding only `.platform` makes Fabric reject the *entire* Git sync with `MissingItemDefinitionFiles`, so it cannot even be present in a feature workspace |
+| `.schedules` | **Locally** | Fabric rewrites the line endings, so a portal commit carries whitespace noise whether or not you touched it. It also cannot hold `parameter.yml`'s placeholder in a feature workspace: Fabric validates the schema and a string where a boolean belongs fails with `InvalidArtifactJobSchedulerException` |
 | Report | **Portal** | The reason the portal exists — without it you need Power BI Desktop and Windows to see a render at all. The definition comes back unchanged |
 | Notebook | **Portal**, when you need to run it | The definition comes back unchanged, and interactive Spark is the one thing no local editor provides |
 | Semantic model | **Locally**, with care | The one item with a known trap — see below |
@@ -130,7 +131,7 @@ expression out of `model.tmdl` into a separate `expressions.tmdl` with the autho
 workspace's SQL endpoint baked into it, which silently defeats the `parameter.yml` rewrite
 that is supposed to rebind it per environment — green everywhere, pointed at dev forever.
 A guard fails the pull request when that happens. Git integration's serialiser does *not*
-split the file, so a branched-workspace commit behaves better than an export does. Two
+split the file, so a feature-workspace commit behaves better than an export does. Two
 first-party serialisers disagreeing about the same item is reason enough to keep TMDL edits
 in an editor, where what you wrote is what gets committed.
 
@@ -138,7 +139,7 @@ in an editor, where what you wrote is what gets committed.
 `getDefinition` against this repository's own deployed items. That is the export path, not
 the Git path, and the semantic-model row is proof the two can differ — so treat the report,
 notebook and variable-library rows as verified for export and expected, not proven, for a
-portal edit committed through Git integration. The branched-workspace round trip did commit
+portal edit committed through Git integration. The feature-workspace round trip did commit
 a real notebook edit cleanly; a report and a semantic model were not separately edited and
 committed, and that gap is worth closing before anyone leans on those two rows.
 
@@ -174,11 +175,11 @@ flowchart LR
 
 Reads and writes split by construction:
 
-- **Writes go to your branched workspace** — it is yours, and the shared workspaces
+- **Writes go to your feature workspace** — it is yours, and the shared workspaces
   refuse them anyway: team members hold Viewer there.
 - **Reads come from the shared dev workspace** — the real, pipeline-maintained data,
   one Viewer grant away.
-- **Need dev's data inside your isolated runs?** OneLake shortcuts from your branched
+- **Need dev's data inside your isolated runs?** OneLake shortcuts from your feature
   lakehouse into dev's tables — real input, nothing copied.
 
 ### What a Git-connected workspace does to this repository
@@ -196,7 +197,7 @@ Tested, rather than assumed — a workspace was connected to a feature branch po
 **And once it does sync, the workspace reports changes you did not make.** With no edit at
 all, `lh_bronze` and `nb_ingest_orders` come back *Modified*, and committing produces a
 diff of pure whitespace: Fabric writes files with no trailing newline, and rewrites
-`.schedules` line endings. Nothing is lost, but every branched workspace starts dirty and
+`.schedules` line endings. Nothing is lost, but every feature workspace starts dirty and
 a careless commit fills the repository with noise.
 
 One thing that did **not** happen, despite the API suggesting it would: Git integration
@@ -205,7 +206,7 @@ separate `expressions.tmdl` with the author's endpoint baked in, but the Git ser
 does not — the two paths disagree, and only the API path breaks `parameter.yml`. A guard
 catches that case either way.
 
-The honest summary: authoring in a branched workspace works for items a workspace can
+The honest summary: authoring in a feature workspace works for items a workspace can
 serialise cleanly, and this repository's solution folder is not one of them today. Treat
 the portal as a place to draft, and the repository as where a change becomes real.
 

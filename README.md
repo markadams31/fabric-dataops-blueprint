@@ -52,7 +52,7 @@ solutions exchange data only through OneLake shortcuts.
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
 | Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
-| People | The team holds Viewer on its shared workspaces and authors locally or in a branched workspace; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
+| People | The team holds Viewer on its shared workspaces and authors locally or in a feature workspace of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
 Adding a solution is one folder copied from `solutions/_template` — everything else is derived from it.
 
@@ -143,7 +143,7 @@ the `capacity` workflow is the resume button.
 Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md)
 for how a change travels and [the tooling and choices](docs/tooling.md) for what else was possible and
 what each option costs; adopting it — [the quickstart](docs/quickstart.md); authoring in the portal —
-[branched workspaces](docs/branched-workspaces.md); maintaining it — the
+[authoring in the portal](docs/portal-authoring.md); maintaining it — the
 maintainer notes in [CLAUDE.md](CLAUDE.md).
 
 MIT-licensed. One maintainer, best effort.

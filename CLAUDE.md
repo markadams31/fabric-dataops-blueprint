@@ -118,14 +118,14 @@ round of live testing settled:
   not supported. The watch-list row that said *adopt* was wrong for this shape and
   now says so; delegated shortcuts are the replacement to wait for.
 - **The GitHub provider setting needs the developers too (09-04):** connecting a
-  branched workspace to a branch fails with `FeatureNotAvailable` — "the tenant
+  feature workspace to a branch fails with `FeatureNotAvailable` — "the tenant
   administrator has not enabled the specified Git provider type" — unless the
   person doing it is in a group the *Users can sync workspace items with GitHub
   repositories* setting is scoped to. Scoping it to `grp-fabric-automation` alone
-  covers the pipeline but locks out every human who would author in a branched
+  covers the pipeline but locks out every human who would author in a feature
   workspace. The error names no setting, so this is minutes of confusion for an
   adopter.
-- **Branched workspace, tested end to end (09-04):** PAT → Fabric connection →
+- **Feature workspace, tested end to end (09-04):** PAT → Fabric connection →
   `git/connect` → `initializeConnection` → `updateFromGit` → `commitToGit`, all by
   API. Blockers found, in order: the GitHub tenant setting scoped to automation
   only; a Warehouse folder holding just `.platform` (`MissingItemDefinitionFiles`,
@@ -176,14 +176,14 @@ relies on that has *not* been, so a reader can tell the difference. Audited 2026
 
 | Claim | Where it appears | Status |
 |---|---|---|
-| A report or semantic model edited **in the portal** commits back cleanly | `path-to-production.md` recommends the portal for reports | **The known gap.** All round-trip fidelity was observed through `getDefinition`, which is the export path. The semantic model proves the two serialisers differ — `getDefinition` splits `expressions.tmdl`, Git integration does not. Only a notebook edit has been committed from a branched workspace |
+| A report or semantic model edited **in the portal** commits back cleanly | `path-to-production.md` recommends the portal for reports | **The known gap.** All round-trip fidelity was observed through `getDefinition`, which is the export path. The semantic model proves the two serialisers differ — `getDefinition` splits `expressions.tmdl`, Git integration does not. Only a notebook edit has been committed from a feature workspace |
 | Power BI Desktop is a usable authoring path | `path-to-production.md` lists it, now with the caveat inline | Never exercised. No Windows here, and the Windows-in-Docker spike was dropped. Desktop save fidelity for a hand-authored PBIR is unknown |
 | The Fabric Data Engineering VS Code extension edits locally and runs on remote Spark | `path-to-production.md` offers it as the notebook alternative | Taken from Microsoft's documentation, not run here |
 | `executeQueries` works for a service principal with the Power BI audience and the Power BI SP switch | Watch list | The 401 was measured against the *Fabric* switch. The retest was never run; dbt singular tests are the smoke path meanwhile |
 | Publishing a `.schedules` returned by `getDefinition` applies it | Evidence register notes it | Publishing a *hand-written* `.schedules` was verified. Round-tripping one was not |
 | The Git APIs accept a service principal | Nothing depends on it; recorded as resolved doc contradiction | The specs mark the operations conditionally supported. Every Git call this repository has made ran as a user |
 | Two builds dispatched simultaneously serialise correctly | Implied by the per-solution concurrency groups | The schedule-versus-promote collision was tested and serialised. Two concurrent builds were not |
-| The branched-workspace alternatives work — provision-on-request, or Terraform-declared per-developer workspaces | `branched-workspaces.md` offers both | Designs, not implementations. Neither has been built |
+| The feature-workspace alternatives work — provision-on-request, or Terraform-declared per-developer workspaces | `portal-authoring.md` offers both | Designs, not implementations. Neither has been built |
 | Delegated shortcuts remove the need for the Contributor contract grant | Watch list, as the replacement to wait for | Preview, and untested here. The claim rests on Microsoft's description |
 
 Two things worth saying about this table. It is deliberately not a defect list — several rows
@@ -206,10 +206,10 @@ versions.
 | `executeQueries` for service principals | Power BI REST API | **Re-test before assuming a wall**: this is a *Power BI* API needing the `analysis.windows.net/powerbi/api` audience and the *Power BI* SP switch — a different setting from the Fabric one we enumerated. Documented fallback if it still fails: query the SQL analytics endpoint with Entra auth, where SP support is explicit | Reinstate a DAX smoke against the semantic model |
 | Finer-grained OneLake read | **Tried and blocked, measured 2026-09-04.** OneLake security roles are GA but [support only Lakehouse, mirrored databases and mirrored catalogs](https://learn.microsoft.com/fabric/onelake/security/data-access-control-model#permissions-and-supported-items) — not Warehouse, which is what our contract shortcut targets. Item-level sharing is closed as well: warehouse sharing is [UI-only and not supported for service principals](https://learn.microsoft.com/fabric/data-warehouse/share-warehouse-manage-permissions#limitations) | Warehouse becomes a supported item type, **or** [delegated shortcuts](https://learn.microsoft.com/fabric/onelake/shortcuts/create-onelake-shortcut) leave preview | Delegated shortcuts are the real replacement — a fixed identity on the shortcut means the consumer needs no grant on the producer at all. Until then Contributor stays, and the reason is now recorded in `solutions.tf` rather than implied |
 | PBIR becomes the enforced report format | Fabric release notes | GA (announced Q3 2026) | Format already used here; confirm nothing breaks |
-| Fabric Git integration read-write requirement | [Git limitations](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations) | 2026-12-01 | Verify branched-workspace flow for Viewer-only users |
+| Fabric Git integration read-write requirement | [Git limitations](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations) | 2026-12-01 | Verify feature-workspace flow for Viewer-only users |
 | Warehouse definition REST API | Fabric roadmap — "Create, Get, Update warehouse definition REST API", target Q3 2026, GA: *provision a warehouse initialised from a definition payload supporting Dacpac and SQL project* | Ships | **Do not adopt blindly** — it would make fabric-cicd a second owner of warehouse schema, which dbt owns. Relevant only if dbt ever leaves |
 | Transaction support for Git integration and deployment pipelines | Fabric roadmap — target Q4 2026, GA: atomic deploys with automatic rollback, "no partial state" | Ships | Revisit the documented "deployment is not atomic" limit in path-to-production |
-| File-level commit | Fabric roadmap — target Q3 2026, public preview | Ships | Would let a branched-workspace commit exclude Fabric's whitespace-only churn |
+| File-level commit | Fabric roadmap — target Q3 2026, public preview | Ships | Would let a feature-workspace commit exclude Fabric's whitespace-only churn |
 | Bulk Import/Export item definitions | Fabric roadmap — target Q3 2026, GA (beta today, `?beta=true`) | GA | Closest native shape to our bundle. Wait for GA: adopting at beta means changing call sites twice |
 | Associate an identity with items and schedules | Fabric roadmap — target Q4 2026, public preview; [beta API today](https://learn.microsoft.com/rest/api/fabric/articles/item-management/associate-item-identity) | Ships | Removes the deploy-identity-owns-the-item problem and the 30-day owner keep-alive concern |
 | Tenant settings by API | [Update Tenant Setting](https://learn.microsoft.com/rest/api/fabric/admin/tenants/update-tenant-setting) — preview, "not recommended for production", SP and MI supported | Leaves preview | Would make the quickstart's portal step scriptable, removing the only manual step in setup |
