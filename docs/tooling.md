@@ -27,14 +27,29 @@ carries, and which trade-offs this repository accepted.
 ## What the platform carries, and what you carry
 
 This is the single most useful thing to understand, and the source of most confusion.
-**An item definition is the item's content, not everything about the item.** A data
-pipeline's definition is `pipeline-content.json` plus `.platform` — that is all. Its
-schedule, its permissions and its sensitivity label are separate platform state.
+**An item definition is the item's content, not everything about the item.**
 
-Git integration serialises *more* than the definition into the item folder (that is
-where `.schedules` comes from), and deployment pipelines copy items at the workspace
-level. The definition API — which fabric-cicd uses — carries content only. So the same
-words mean different things depending on which tool you picked:
+```mermaid
+flowchart LR
+    subgraph DEF ["The item definition — what travels in the bundle"]
+        P[".platform<br/>type · display name · logicalId"]
+        C["the content<br/>notebook-content.py · TMDL · PBIR"]
+        S[".schedules<br/>when it runs"]
+    end
+    subgraph ELSE ["Everything else about the same item"]
+        R["Cross-workspace references<br/>parameter.yml"]
+        W["The workspace, its roles, its capacity<br/>Terraform"]
+        G["Permissions and sensitivity labels<br/>no mechanism here — a documented gap"]
+    end
+    DEF -->|"published as one artefact"| ITEM["One item, live in a workspace"]
+    ELSE -->|"applied separately"| ITEM
+    style DEF fill:#fff8e1,stroke:#f59e0b
+    style ELSE fill:#eff6ff,stroke:#2563eb
+```
+
+Everything in the gold box moves as one artefact. Everything in the blue box has to be
+carried by something else, or by nobody — and which box a thing falls into changes with
+the tool you picked:
 
 | | Deployment pipelines | Git integration | API-driven (this repo) |
 |---|---|---|---|
