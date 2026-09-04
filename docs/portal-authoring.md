@@ -76,6 +76,29 @@ Viewer-only rule that keeps dev from drifting, it still needs the same rights to
 target workspace, and a workspace that fabric-cicd deploys into would sit permanently
 dirty, since a deploy registers as uncommitted changes.
 
+## The lifecycle, before the detail
+
+```mermaid
+flowchart LR
+    B["1 · Branch<br/>pushed from your clone"] --> W["2 · Workspace<br/>you create it"]
+    W --> C["3 · Connect it<br/>Git integration, your branch"]
+    C --> K["4 · Work<br/>report layout · run a notebook"]
+    K --> M["5 · Commit<br/>to your branch"]
+    M --> PR["6 · Pull request"]
+    PR --> MAIN["merged to main"]
+    MAIN --> DEV["the build deploys<br/>ws-#60;solution#62;-dev"]
+    MAIN --> D["7 · Delete the workspace"]
+    M -.->|"or switch branch and keep it"| K
+    style W fill:#f0fdf4,stroke:#16a34a
+    style K fill:#f0fdf4,stroke:#16a34a
+    style MAIN fill:#fff8e1,stroke:#f59e0b
+    style DEV fill:#eff6ff,stroke:#2563eb
+```
+
+Green is yours and temporary, gold is the source of truth, blue belongs to the pipeline.
+The dotted line is the choice covered further down: delete the workspace per feature, or
+keep one and move it between branches.
+
 ## 1. Create the branch first
 
 Fabric connects to a branch that already exists, so push it before you go near the portal.

@@ -57,6 +57,18 @@ solutions exchange data only through OneLake shortcuts.
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
 | People | The team holds Viewer on its shared workspaces and authors locally or in a feature workspace of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
+```mermaid
+flowchart TB
+    CP["Workspaces · roles · identities · connections<br/>Control plane — Terraform, as mi-fabric-platform"]
+    ST["Lakehouse and Warehouse<br/>the item exists — fabric-cicd<br/>what is inside it — dbt"]
+    DP["Notebooks · semantic models · reports · dbt models<br/>Data plane — fabric-cicd and dbt, as mi-deploy-#60;solution#62;"]
+    CP -->|"creates the place"| ST
+    ST -->|"holds the data"| DP
+    style CP fill:#eff6ff,stroke:#2563eb
+    style ST fill:#fff8e1,stroke:#f59e0b
+    style DP fill:#f0fdf4,stroke:#16a34a
+```
+
 That third row is the one worth pausing on, because it is where most Fabric designs get
 muddled. A lakehouse or a warehouse is a *container*: creating it is an infrastructure act,
 but what lives inside it is data. Splitting the two is what lets **one mechanism own each
