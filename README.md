@@ -52,29 +52,34 @@ solutions exchange data only through OneLake shortcuts.
 | Layer | Per solution | Shared | Owned by |
 |---|---|---|---|
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
-| Data plane | Notebooks, semantic models and reports, and the dbt project that builds Silver and Gold — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
-| Stores — both planes at once | The Lakehouse (Bronze) and Warehouse (Silver and Gold). Their *existence* is control plane; the *schema inside them* is data plane | — | fabric-cicd creates the empty item; dbt owns everything in the warehouse |
+| Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
 | People | The team holds Viewer on its shared workspaces and authors locally or in a feature workspace of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
 ```mermaid
 flowchart TB
     CP["Workspaces · roles · identities · connections<br/>Control plane — Terraform, as mi-fabric-platform"]
-    ST["Lakehouse and Warehouse<br/>the item exists — fabric-cicd<br/>what is inside it — dbt"]
-    DP["Notebooks · semantic models · reports · dbt models<br/>Data plane — fabric-cicd and dbt, as mi-deploy-#60;solution#62;"]
-    CP -->|"creates the place"| ST
-    ST -->|"holds the data"| DP
+    subgraph DP ["Data plane — as mi-deploy-#60;solution#62;"]
+        I["The items: lakehouse · warehouse · notebooks · semantic model · report<br/>published by fabric-cicd"]
+        T["The tables inside the warehouse<br/>built and owned by dbt, and only dbt"]
+    end
+    CP -->|"creates the workspaces the items live in"| DP
+    I -->|"one owner per store"| T
     style CP fill:#eff6ff,stroke:#2563eb
-    style ST fill:#fff8e1,stroke:#f59e0b
     style DP fill:#f0fdf4,stroke:#16a34a
 ```
 
-That third row is the one worth pausing on, because it is where most Fabric designs get
-muddled. A lakehouse or a warehouse is a *container*: creating it is an infrastructure act,
-but what lives inside it is data. Splitting the two is what lets **one mechanism own each
-store** — fabric-cicd brings the warehouse into being from a folder holding nothing but a
-`.platform` file, and from that moment dbt owns every table in it. Terraform is deliberately
-not in that path: it creates workspaces and grants, not items.
+**The warehouse is data plane, and Terraform is deliberately kept out of it.** The provider
+*can* manage one — `fabric_warehouse` is generally available — and it is still the wrong
+tool, because Terraform's model is convergence and its remedy for a changed immutable
+attribute is to replace the resource. For a store holding the only copy of the marts, that
+remedy is data loss. This repository already refuses that class of risk elsewhere: orphan
+control never deletes data-bearing item types, and hard delete is never enabled. Putting the
+warehouse under a tool that can decide to recreate it would contradict the same principle.
+
+So fabric-cicd brings the warehouse into being from a folder holding nothing but a
+`.platform` file, and from that moment dbt owns every table in it — **one owner per store**.
+Terraform creates the workspace the warehouse lives in, and stops there.
 
 The cost is visible and worth knowing before you meet it. Because the warehouse folder
 carries no schema, Fabric's Git integration rejects it — and because Fabric would want to own
