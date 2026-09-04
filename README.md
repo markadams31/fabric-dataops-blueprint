@@ -15,7 +15,9 @@ The beneficial implications that flow from this core foundation include:
 This design is intended for large enterprises that want to manage a data estate at scale with confidence.
 
 One caveat: code rebuilds definitions, not data.  Where a table holds history the upstream no
-longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such.
+longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such —
+[what rolls back and what does not](docs/path-to-production.md#what-rolls-back-and-what-does-not)
+says which table in this solution is one, and which platform mechanisms exist for it.
 
 ## Choosing a release process
 

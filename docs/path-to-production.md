@@ -131,6 +131,45 @@ Three honest limits of the bundle:
   data ever travels between environments.
 
 
+## What rolls back, and what does not
+
+Promotion makes definitions reversible: point `promote` at an earlier run and the bundle
+proven then is deployed again, unchanged. That path has been exercised, and it is the whole
+of what this repository can undo.
+
+**It cannot undo data, and nothing here pretends to.** Rolling a definition back to
+yesterday does not roll back what ran overnight. In this solution the distinction is
+concrete:
+
+| Table | Materialisation | On a bad run |
+|---|---|---|
+| `stg_*` | `table` — rebuilt from the seeded CSVs every run | Disposable. The next run repairs it |
+| `dim_customers` | `table` | Disposable |
+| `fct_orders` | `incremental`, `merge` on `order_id` | **Accumulates.** A wrong merge is written into history, and re-running does not remove it |
+
+Only the third row is a recovery problem, and only because incremental models are the point
+of incremental models. `--full-refresh` appears in no workflow here, deliberately: there is
+no path by which CI can rebuild that table from scratch, so nobody does it by accident.
+
+### The platform mechanisms, and why none are wired up
+
+Fabric has real recovery tooling. This repository documents it rather than automating it,
+because a demonstration should not imply a recovery posture it has never rehearsed.
+
+| Store | Mechanism | What to know before relying on it |
+|---|---|---|
+| Warehouse | [Restore points and restore in-place](https://learn.microsoft.com/fabric/data-warehouse/restore-in-place) | System points are created every eight hours, giving an eight-hour RPO. Restore *overwrites* the warehouse in place, keeps its name, and needs Workspace Admin — which no human holds here |
+| Warehouse | [Time travel and clones](https://learn.microsoft.com/fabric/data-warehouse/data-retention) | Bounded by the retention period: 30 calendar days by default, configurable 1–120 |
+| Lakehouse | [Delta `RESTORE`](https://learn.microsoft.com/fabric/data-engineering/delta-lake-restore), or time travel to read without changing state | `VACUUM` can make a restore impossible by removing the files a version needs |
+| Any item | The recycle bin | Restores with the item ID intact, so references survive — measured here |
+
+**One interaction is worth knowing before you copy the cost model.** Warehouse restore
+points are only created while the capacity is Active, and retention is counted in calendar
+days *including the time the capacity is paused*. A capacity that is paused for most of the
+day therefore ages its restore points at full speed while generating them rarely. Pausing to
+save money quietly costs recovery granularity, which is a reasonable trade for a
+demonstration and a poor one for production.
+
 ## Why this shape, and not another
 
 Every choice above — an API-driven release, a bundle, Terraform for access, dbt
