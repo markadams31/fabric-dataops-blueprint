@@ -49,6 +49,17 @@ output "solutions" {
 # Terraform-manageable grant that satisfies a shortcut contract to a warehouse.
 # That is an over-grant, accepted and documented (see the watch list): the
 # consumer identity could write to the producer, and we rely on it not to.
+#
+# Measured 2026-09-04, and it closes the obvious escape route. OneLake security
+# roles look like the answer and are not: the item type is unsupported. Calling
+# GET .../items/<warehouse>/dataAccessRoles returns HTTP 400
+# UniversalSecurityFeatureDisabledForArtifactType, "Universal security feature is
+# disabled for the artifact type 'Warehouse'", while the identical call against
+# this solution's lakehouse returns 200 and its DefaultReader role. Item-level
+# sharing is closed too: Microsoft documents warehouse sharing as UI-only and
+# states that sharing a warehouse directly with a service principal is not
+# supported. So Contributor is not laziness — it is the only grant that both
+# reaches OneLake and can be declared.
 # Both ends must exist: a contract disappears with either side of it, so
 # retiring a solution stays a folder deletion.
 resource "fabric_workspace_role_assignment" "contract_finance_reads_sales" {
