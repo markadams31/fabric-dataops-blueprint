@@ -2,7 +2,9 @@
 
 Some changes are easier to make in Fabric than in a text editor — a report, a semantic
 model, a notebook you want to run interactively. This is how to do that without anyone
-editing a shared workspace.
+editing a shared workspace. If you are still weighing whether you need a workspace at all,
+[what you cannot run locally](path-to-production.md#what-you-cannot-run-locally) is the
+list that decides it — for dbt work, usually not.
 
 The rule that makes it safe: **writes go to your workspace, reads come from the shared
 one.** Nobody can write to `ws-<solution>-dev` — the team holds Viewer there — so your
