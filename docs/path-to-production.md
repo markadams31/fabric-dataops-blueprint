@@ -136,6 +136,49 @@ Three honest limits of the bundle:
   data ever travels between environments.
 
 
+## What updates the data
+
+A deploy changes what things *are*. It never, by itself, changes what they *contain*:
+publishing a definition creates an empty warehouse, a notebook that has not run, a model
+with no rows. Data appears when something the bundle defined is executed. Those are two
+lifecycles, and conflating them is the usual source of confusion:
+
+| | Definitions | Content |
+|---|---|---|
+| What changes it | Deploying the bundle | Running something the bundle defined |
+| What triggers it | A merge, or a promotion someone approved | A schedule, an event, or a deploy |
+| How it reaches an environment | Built once, promoted unchanged | It does not travel — each environment produces its own |
+| Where it is declared | `solutions/<name>/` | The same repository. Only the trigger differs |
+
+**The rule that decides where a trigger lives is that it follows the runtime.**
+
+- **Work that runs inside Fabric is scheduled by Fabric.** `nb_ingest_orders` carries a
+  `.schedules` file in its own item folder, so its trigger is part of its definition and
+  travels in the bundle like everything else. `parameter.yml` decides which environments
+  actually run it — here, prod only.
+- **Work that runs outside Fabric is scheduled outside it.** dbt cannot run inside Fabric —
+  [three documented reasons](tooling.md#what-this-repository-chose) — so GitHub Actions
+  triggers it: `prod-schedule.yml` on a nightly cron, and `deploy-env.yml` on every deploy,
+  so a release leaves the marts consistent with the models that just shipped.
+
+So "does the trigger live in source code?" is yes either way, and that is the important part.
+What differs is *which* source: a Fabric-run trigger is a file inside the item, and travels in
+the bundle; an externally-run trigger is a workflow, and travels by being merged. Neither
+needs a separate DevOps pipeline — same repository, same pull request, different clock.
+
+One consequence is worth following, because it explains a piece of machinery that otherwise
+looks arbitrary. An external scheduler is not the bundle, so it has to be *told* which bundle
+production is running: the nightly run reads the record of GitHub Deployments to find the
+commit prod was promoted at, and operates that tree. A Fabric-run trigger never needs this,
+because it was published alongside the thing it triggers.
+
+**What this repository does not use, and why.** Fabric offers richer orchestration —
+[Activator](https://learn.microsoft.com/fabric/real-time-hub/tutorial-orchestrate-jobs-with-job-events)
+for event-driven runs, data pipelines for multi-step flows, Airflow for complex DAGs. None is
+here because the estate does not need one: a notebook and a dbt project, one nightly run. A
+solution with real dependencies between steps would reach for a data pipeline, and it would
+deploy in the bundle like any other item.
+
 ## What rolls back, and what does not
 
 Promotion makes definitions reversible: point `promote` at an earlier run and the bundle
