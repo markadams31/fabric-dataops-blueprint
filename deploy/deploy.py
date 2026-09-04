@@ -156,14 +156,9 @@ def main() -> None:
     if result.status.value != "completed":
         sys.exit(f"publish did not complete: {result.message}")
 
-    live = get_all(f"{API}/workspaces/{ws['id']}/items", headers)
-
-    if (workdir / "dbt").is_dir():
-        # Demo ingestion: every environment seeds the same committed sample bytes,
-        # standing in for a real solution's per-environment ingestion. Promotion
-        # itself moves definitions only — data never travels between workspaces.
-        seed_bronze(cred, headers, ws["id"], live)
-        run_dbt(workdir, cred, headers, ws["id"], live)
+    # Publishing is all this does. Loading source data and rebuilding the marts are
+    # separate, named steps — see seed.py and run_dbt.py — so that the order is
+    # visible in the workflow and a deploy can never quietly write data.
 
 
 

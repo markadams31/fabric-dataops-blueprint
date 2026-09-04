@@ -37,7 +37,7 @@ jobs:
             BUSY=0
             for S in in_progress queued waiting; do
               N=$(gh api "repos/${{ github.repository }}/actions/runs?status=$S&per_page=30" \
-                --jq '[.workflow_runs[] | select(.path==".github/workflows/build.yml" or .path==".github/workflows/promote.yml" or .path==".github/workflows/prod-schedule.yml")] | length')
+                --jq '[.workflow_runs[] | select(.path==".github/workflows/build-and-deploy.yml" or .path==".github/workflows/promote.yml" or .path==".github/workflows/prod-schedule.yml")] | length')
               BUSY=$((BUSY + N))
             done
             if [ "$BUSY" != "0" ]; then echo "deploys in flight or awaiting approval ($BUSY) — skipping pause"; exit 0; fi

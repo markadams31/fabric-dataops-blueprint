@@ -43,7 +43,7 @@ jobs:
           job=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" --paginate \
             --jq ".jobs[] | select(.name == \"deploy-dev ($SOLUTION) / deploy\") | .conclusion" | head -1)
           [ "$job" = "success" ] || { echo "run $RUN_ID: dev deploy for $SOLUTION concluded '${job:-absent}' — only dev-proven bundles promote"; exit 1; }
-          [ "$path" = ".github/workflows/build.yml" ] && [ "$branch" = "main" ] || {
+          [ "$path" = ".github/workflows/build-and-deploy.yml" ] && [ "$branch" = "main" ] || {
             echo "run $RUN_ID is not a build of main ($path @ $branch) — refusing"; exit 1; }
           echo "artifact=$SOLUTION-$sha" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"

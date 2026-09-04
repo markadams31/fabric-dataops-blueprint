@@ -2,12 +2,12 @@
 # to dev in the same run. Promotion later re-deploys the same bundle, never a
 # rebuild. Every solution is rebuilt on every merge — cheap, and it keeps bundles
 # and toolchain in step; per-solution change detection can come when it hurts.
-name: build
+name: build-and-deploy
 on:
   push:
     branches: [main]
     # pyproject/uv.lock included: a library bump changes what a bundle means.
-    paths: [solutions/**, deploy/**, pyproject.toml, uv.lock, .github/workflows/build.yml, .github/workflows/deploy-env.yml]
+    paths: [solutions/**, deploy/**, pyproject.toml, uv.lock, .github/workflows/build-and-deploy.yml, .github/workflows/deploy-env.yml]
   workflow_dispatch:
 
 permissions:
@@ -22,9 +22,12 @@ jobs:
       list: ${{ steps.ls.outputs.list }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.9.26"
       - id: ls
         run: |
-          list=$(ls -d solutions/*/ | xargs -n1 basename | grep -vx '_template' | grep -Ex '[a-z][a-z0-9]+' | jq -R . | jq -sc .)
+          list=$(uv run --no-project python deploy/solutions.py --json)
           echo "list=$list" >> "$GITHUB_OUTPUT"
           echo "solutions: $list"
 

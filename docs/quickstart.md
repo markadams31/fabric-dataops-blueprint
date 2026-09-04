@@ -130,7 +130,7 @@ platform gate. After the merge:
 2. Re-run `platform/scripts/github-setup.sh` — it picks up the new solution's
    identity from `terraform output` and writes its `AZURE_CLIENT_ID_<NAME>`
    variable.
-3. Re-run the failed **build** (or push again). The first build after the merge
+3. Re-run the failed **build-and-deploy** (or push again). The first build after the merge
    raced the provisioning and is expected to fail — this is the one place the
    pull-request flow and the infrastructure meet.
 
@@ -166,7 +166,7 @@ Three mechanisms, in the order a change meets them:
 Resume the capacity first if it is paused (Actions → capacity → run with
 `resume`) — deploys need it running, and the nightly schedule pauses it.
 
-Push to `main`. `build.yml` packs each solution into an immutable bundle and the
+Push to `main`. `build-and-deploy.yml` packs each solution into an immutable bundle and the
 reusable `deploy-env.yml` deploys it into the dev workspace as that solution's own
 identity — publish, seed, `dbt build`, verify. Re-deploying the same bundle is a
 no-op.
