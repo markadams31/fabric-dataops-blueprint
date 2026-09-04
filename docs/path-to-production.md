@@ -120,9 +120,9 @@ is the one that decides where a change should start.
 | dbt models | **Locally** | Not a Fabric item. There is no portal representation to edit |
 | Warehouse | **Locally** | It has no definition at all — `getDefinition` answers `OperationNotSupportedForItemType` — and dbt owns its schema. A Warehouse folder holding only `.platform` makes Fabric reject the *entire* Git sync with `MissingItemDefinitionFiles`, so it cannot even be present in a feature workspace |
 | `.schedules` | **Locally** | Fabric rewrites the line endings, so a portal commit carries whitespace noise whether or not you touched it. It also cannot hold `parameter.yml`'s placeholder in a feature workspace: Fabric validates the schema and a string where a boolean belongs fails with `InvalidArtifactJobSchedulerException` |
-| Report | **Portal** | The reason the portal exists — without it you need Power BI Desktop and Windows to see a render at all. The definition comes back unchanged |
+| Report | **Portal**, for layout | The reason the portal exists — without it you need Power BI Desktop and Windows to see a render at all. A portal edit commits back as exactly that edit. But in a feature workspace the visuals cannot bind to data (below), so anything data-driven has to wait for dev |
 | Notebook | **Portal**, when you need to run it | The definition comes back unchanged, and interactive Spark is the one thing no local editor provides |
-| Semantic model | **Locally**, with care | The one item with a known trap — see below |
+| Semantic model | **Locally** — the portal is not an option | It cannot load in a feature workspace at all, and the known trap below applies to the export path |
 | Variable library | Either | The definition comes back unchanged, and it is a small JSON file, so the editor is usually quicker |
 | Lakehouse | Neither | Nothing to author: the definition is a shell and the content is data. A round trip adds an `alm.settings.json` |
 
@@ -135,13 +135,15 @@ split the file, so a feature-workspace commit behaves better than an export does
 first-party serialisers disagreeing about the same item is reason enough to keep TMDL edits
 in an editor, where what you wrote is what gets committed.
 
-**How much of this is measured.** Every "comes back unchanged" above was observed through
-`getDefinition` against this repository's own deployed items. That is the export path, not
-the Git path, and the semantic-model row is proof the two can differ — so treat the report,
-notebook and variable-library rows as verified for export and expected, not proven, for a
-portal edit committed through Git integration. The feature-workspace round trip did commit
-a real notebook edit cleanly; a report and a semantic model were not separately edited and
-committed, and that gap is worth closing before anyone leans on those two rows.
+**How much of this is measured.** All of it, now. A report was edited in the portal of a
+feature workspace and committed back: the diff is exactly the edit — a new page directory
+and an updated `pages.json` — and the semantic model was not touched at all, confirming
+through a real commit what was previously only inferred from the two serialisers differing.
+What Fabric adds on top is uniform and harmless: every file it writes loses its trailing
+newline, compact JSON comes back pretty-printed, and `.schedules` line endings are rewritten
+(byte-different, identical when parsed). With no edit at all, only `lh_bronze` and
+`nb_ingest_orders` report as Modified — the report, semantic model and variable library stay
+clean.
 
 One alternative deliberately not taken: running the dbt models against DuckDB or a local
 SQL Server for a fast offline loop. The staging models reach OneLake through `OPENROWSET`,
@@ -193,6 +195,20 @@ Tested, rather than assumed — a workspace was connected to a feature branch po
 |---|---|
 | `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform`. A warehouse has no exportable definition, which fabric-cicd is happy to deploy but Git integration rejects — and it refuses the whole directory, not just that item |
 | `InvalidArtifactJobSchedulerException` | Hit when `.schedules` held `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. The file now ships a literal `false` and `parameter.yml` rewrites that instead, so this no longer occurs here — the lesson generalises: placeholders survive in free-form files like TMDL and fail wherever Fabric validates a schema |
+
+**The bigger constraint is that a synced workspace is not a deployed one.** Git sync copies
+the definitions as committed; it does not run fabric-cicd, so `parameter.yml` never executes
+and every placeholder stays a placeholder. `model.tmdl` commits the line
+`database = Sql.Database("SALES_WAREHOUSE_ENDPOINT", "SALES_WAREHOUSE_ID")`, and that is
+exactly what lands in the workspace — a connection to a server named `SALES_WAREHOUSE_ENDPOINT`.
+Measured consequences: the semantic model's editor refuses to open, and opening the report
+gives *"Couldn't load the model schema associated with this report."* The report editor still
+works, so layout can be changed and committed; nothing data-bound can be.
+
+This is not a defect to fix, it is what parameterisation means — the values are per
+environment, and a feature workspace is not one of them. It does decide what the portal is
+good for here: **drafting a report's layout, and running a notebook.** Anything that needs to
+resolve a connection needs a deployed workspace, which means `ws-<solution>-dev` after a merge.
 
 **And once it does sync, the workspace reports changes you did not make.** With no edit at
 all, `lh_bronze` and `nb_ingest_orders` come back *Modified*, and committing produces a

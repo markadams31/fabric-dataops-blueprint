@@ -105,6 +105,22 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **Portal round trip, measured end to end (09-04):** a report was edited in the
+  portal of a feature workspace synced from a branch, then committed. The diff is
+  exactly the edit — a new page directory plus an updated `pages.json` — and the
+  semantic model was **not touched at all**, which confirms by commit what was
+  previously inferred from `getDefinition` and the Git serialiser disagreeing.
+  Fabric's additions are uniform: every file it writes loses its trailing newline,
+  compact JSON returns pretty-printed (`version.json`), and `.schedules` line endings
+  are rewritten — byte-different, identical parsed. With no edit at all only
+  `lh_bronze` and `nb_ingest_orders` report Modified; report, semantic model and
+  variable library stay clean. **The finding that matters more than any of that: a
+  synced workspace is not a deployed one.** Git sync does not run fabric-cicd, so
+  `parameter.yml` never executes and `model.tmdl` lands with the literal
+  `Sql.Database("SALES_WAREHOUSE_ENDPOINT", "SALES_WAREHOUSE_ID")`. The semantic
+  model's editor will not open and the report cannot bind its model. A feature
+  workspace is good for a report's layout and for running a notebook; nothing that
+  must resolve a connection can be authored there.
 - **The Contributor over-grant cannot currently be narrowed (09-04):** the
   cross-solution contract shortcuts finance's lakehouse at sales' *warehouse*, and
   both obvious replacements are closed. `GET .../items/<warehouse>/dataAccessRoles`
@@ -176,7 +192,7 @@ relies on that has *not* been, so a reader can tell the difference. Audited 2026
 
 | Claim | Where it appears | Status |
 |---|---|---|
-| A report or semantic model edited **in the portal** commits back cleanly | `path-to-production.md` recommends the portal for reports | **The known gap.** All round-trip fidelity was observed through `getDefinition`, which is the export path. The semantic model proves the two serialisers differ — `getDefinition` splits `expressions.tmdl`, Git integration does not. Only a notebook edit has been committed from a feature workspace |
+| ~~A report or semantic model edited **in the portal** commits back cleanly~~ | — | **Closed 2026-09-04.** Measured: a portal report edit commits back as exactly that edit, and the semantic model is untouched by the commit. The semantic model turned out not to be authorable in a feature workspace at all, for a different reason — see the evidence register |
 | Power BI Desktop is a usable authoring path | `path-to-production.md` lists it, now with the caveat inline | Never exercised. No Windows here, and the Windows-in-Docker spike was dropped. Desktop save fidelity for a hand-authored PBIR is unknown |
 | The Fabric Data Engineering VS Code extension edits locally and runs on remote Spark | `path-to-production.md` offers it as the notebook alternative | Taken from Microsoft's documentation, not run here |
 | `executeQueries` works for a service principal with the Power BI audience and the Power BI SP switch | Watch list | The 401 was measured against the *Fabric* switch. The retest was never run; dbt singular tests are the smoke path meanwhile |
