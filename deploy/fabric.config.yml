@@ -13,3 +13,6 @@ unpublish:
 
 features:
   - enable_shortcut_publish
+  # Lets parameter.yml carry $ENV: placeholders instead of literal IDs, so a
+  # cross-solution contract holds no GUIDs a fork would have to edit.
+  - enable_environment_variable_replacement

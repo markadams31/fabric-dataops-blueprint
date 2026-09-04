@@ -1,15 +1,18 @@
 # The cross-solution data contract, wired explicitly: finance's shortcut points
-# at sales' gold in each environment. Contracts are versioned configuration.
+# at sales' gold. The producer is named by the placeholder in
+# shortcuts.metadata.json; deploy.py resolves that solution's workspace and
+# warehouse for whichever environment is being deployed and exports the two IDs,
+# so no identifier from anyone's tenant is committed here. A fork works unedited.
 find_replace:
     - find_value: "SALES_WORKSPACE_ID"
       replace_value:
-        dev: "4757af85-877a-4bf7-b4e5-90e23836f20c"
-        test: "c743255e-30c8-4ae0-8225-e95b362de59f"
-        prod: "4b2f1d3e-ae1f-4422-9e56-134dd3b39701"
+        dev: "$ENV:SALES_WORKSPACE_ID"
+        test: "$ENV:SALES_WORKSPACE_ID"
+        prod: "$ENV:SALES_WORKSPACE_ID"
       file_path: "/lh_finance.Lakehouse/shortcuts.metadata.json"
     - find_value: "SALES_WAREHOUSE_ITEM_ID"
       replace_value:
-        dev: "81042d85-86d3-4263-9b01-df6affa33073"
-        test: "8800f083-5fe3-487a-900f-a64164616853"
-        prod: "ee8c5626-733e-45ac-9f2d-fc31ec7dcd65"
+        dev: "$ENV:SALES_WAREHOUSE_ITEM_ID"
+        test: "$ENV:SALES_WAREHOUSE_ITEM_ID"
+        prod: "$ENV:SALES_WAREHOUSE_ITEM_ID"
       file_path: "/lh_finance.Lakehouse/shortcuts.metadata.json"

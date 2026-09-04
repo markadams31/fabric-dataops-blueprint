@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tarfile
@@ -70,6 +71,37 @@ def content_digest(root: pathlib.Path) -> str:
     return h.hexdigest()
 
 
+def export_contract_ids(workdir: pathlib.Path, headers: dict, environment: str) -> None:
+    """Resolve the producers this solution's shortcuts name, for parameter.yml.
+
+    A contract names its producer in the shortcut itself (`SALES_WORKSPACE_ID`
+    means the `sales` solution), so the IDs can be looked up per environment
+    rather than committed. fabric-cicd substitutes `$ENV:` placeholders from the
+    environment, which is why these are exported rather than returned.
+    """
+    for f in sorted((workdir / "fabric").rglob("shortcuts.metadata.json")):
+        try:
+            shortcuts = json.loads(f.read_text())
+        except json.JSONDecodeError:
+            continue  # guard_contract_targets reports malformed contracts
+        for sc in shortcuts if isinstance(shortcuts, list) else []:
+            target = ((sc.get("target") or {}).get("oneLake") or {})
+            m = re.fullmatch(r"([A-Z][A-Z0-9]*)_WORKSPACE_ID", str(target.get("workspaceId", "")))
+            if not m:
+                continue
+            producer = m.group(1)
+            name = f"ws-{producer.lower()}-{environment}"
+            ws = next((w for w in get_all(f"{API}/workspaces", headers)
+                       if w["displayName"] == name), None)
+            if not ws:
+                sys.exit(f"contract names producer '{producer.lower()}', but {name} is not "
+                         f"visible to this identity — the contract grant may be missing")
+            items = get_all(f"{API}/workspaces/{ws['id']}/items", headers)
+            os.environ[f"$ENV:{producer}_WORKSPACE_ID"] = ws["id"]
+            os.environ[f"$ENV:{producer}_WAREHOUSE_ITEM_ID"] = one(items, "Warehouse", "wh_")["id"]
+            print(f"contract: {producer.lower()} resolved in {environment}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)
@@ -107,6 +139,7 @@ def main() -> None:
     # No item-type list: the library defaults to every type it accepts, which is
     # what full-scope publishing needs — it resolves cross-item references only
     # within one invocation, so a partial scope deploys something broken.
+    export_contract_ids(workdir, headers, args.environment)
     core = {"workspace_id": ws["id"],
             "repository_directory": str(workdir / "fabric")}
     if (workdir / "fabric" / "parameter.yml").is_file():
