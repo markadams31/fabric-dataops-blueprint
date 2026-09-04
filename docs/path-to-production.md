@@ -107,6 +107,40 @@ them can be edited anywhere, and none of them can be executed anywhere but a wor
 a capacity. The alternatives above are all the same trick — keep the editor local and send
 the execution somewhere that has compute.
 
+### Which items are worth authoring where
+
+The previous table is about compute. This one is about fidelity: what happens to an item
+when the portal writes it back. The two questions have different answers, and the second
+is the one that decides where a change should start.
+
+| Item | Author it | Why |
+|---|---|---|
+| dbt models | **Locally** | Not a Fabric item. There is no portal representation to edit |
+| Warehouse | **Locally** | It has no definition at all — `getDefinition` answers `OperationNotSupportedForItemType` — and dbt owns its schema. A Warehouse folder holding only `.platform` makes Fabric reject the *entire* Git sync with `MissingItemDefinitionFiles`, so it cannot even be present in a branched workspace |
+| `.schedules` | **Locally** | Fabric rewrites the line endings, so a portal commit carries whitespace noise whether or not you touched it. It also cannot hold `parameter.yml`'s placeholder in a branched workspace: Fabric validates the schema and a string where a boolean belongs fails with `InvalidArtifactJobSchedulerException` |
+| Report | **Portal** | The reason the portal exists — without it you need Power BI Desktop and Windows to see a render at all. The definition comes back unchanged |
+| Notebook | **Portal**, when you need to run it | The definition comes back unchanged, and interactive Spark is the one thing no local editor provides |
+| Semantic model | **Locally**, with care | The one item with a known trap — see below |
+| Variable library | Either | The definition comes back unchanged, and it is a small JSON file, so the editor is usually quicker |
+| Lakehouse | Neither | Nothing to author: the definition is a shell and the content is data. A round trip adds an `alm.settings.json` |
+
+**The semantic model is the row to be careful with.** `getDefinition` splits the model's
+expression out of `model.tmdl` into a separate `expressions.tmdl` with the authoring
+workspace's SQL endpoint baked into it, which silently defeats the `parameter.yml` rewrite
+that is supposed to rebind it per environment — green everywhere, pointed at dev forever.
+A guard fails the pull request when that happens. Git integration's serialiser does *not*
+split the file, so a branched-workspace commit behaves better than an export does. Two
+first-party serialisers disagreeing about the same item is reason enough to keep TMDL edits
+in an editor, where what you wrote is what gets committed.
+
+**How much of this is measured.** Every "comes back unchanged" above was observed through
+`getDefinition` against this repository's own deployed items. That is the export path, not
+the Git path, and the semantic-model row is proof the two can differ — so treat the report,
+notebook and variable-library rows as verified for export and expected, not proven, for a
+portal edit committed through Git integration. The branched-workspace round trip did commit
+a real notebook edit cleanly; a report and a semantic model were not separately edited and
+committed, and that gap is worth closing before anyone leans on those two rows.
+
 One alternative deliberately not taken: running the dbt models against DuckDB or a local
 SQL Server for a fast offline loop. The staging models reach OneLake through `OPENROWSET`,
 so they would have to be rewritten to a dialect both engines share — trading a gate that
