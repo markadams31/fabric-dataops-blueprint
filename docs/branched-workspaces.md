@@ -51,6 +51,13 @@ git push -u origin feature/add-revenue-measure
 In Fabric, **Workspaces → New workspace**. Name it `ws-<solution>-dev-<you>` so it is
 obvious whose draft it is, and assign it to the same capacity as the solution.
 
+Not *My workspace* — Fabric's
+[Git integration limitations](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations)
+state plainly that it can't connect to a Git provider, so none of what follows works
+there. It would be a poor fit regardless: you get one, so two branches at once is
+impossible; nobody else can see your draft; and the lifecycle below ends by deleting the
+workspace, which you cannot do to *My workspace*.
+
 ## 3. Connect it to your branch
 
 **Workspace settings → Git integration**. Choose GitHub, add your account with the token,
