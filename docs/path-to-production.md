@@ -9,8 +9,8 @@ process*).
 ## Branching
 
 The repository is trunk-based: one long-lived branch, `main`, and short-lived feature
-branches — one per change, each optionally backed by a branched workspace that lives
-exactly as long as the branch does. Environments are not branches: dev, test and prod
+branches — one per change, each optionally backed by a workspace of your own —
+kept for the branch, or carried between branches as you go. Environments are not branches: dev, test and prod
 differences resolve from values *inside* the bundle, and promotion moves the same
 built bundle behind approval gates, recorded as GitHub Deployments. Branches are for
 work in progress; environments are for released bundles. A hotfix takes the same
