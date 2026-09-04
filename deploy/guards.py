@@ -196,6 +196,38 @@ def guard_schedule_targets(root: pathlib.Path) -> list[str]:
     return out
 
 
+def guard_parameter_targets(root: pathlib.Path) -> list[str]:
+    """Every rewrite in parameter.yml must still have something to rewrite.
+
+    Fabric normalises a definition when a workspace commits it — a semantic
+    model's expression moves out of model.tmdl into its own expressions.tmdl,
+    for one — so authoring in the portal can leave a rewrite pointing at a file
+    that no longer holds its placeholder. fabric-cicd then replaces nothing, and
+    the item deploys still bound to whatever workspace the author was using.
+    """
+    out = []
+    for f in sorted(root.rglob("fabric/parameter.yml")):
+        rel = f.relative_to(root)
+        try:
+            doc = yaml.safe_load(f.read_text()) or {}
+        except yaml.YAMLError as e:
+            out.append(f"{rel}: invalid YAML ({e})")
+            continue
+        for entry in doc.get("find_replace", []) or []:
+            find = entry.get("find_value")
+            path = str(entry.get("file_path") or "").lstrip("/")
+            if not find or not path:
+                continue  # no file_path means "anywhere in the tree"
+            target = f.parent / path
+            if not target.is_file():
+                out.append(f"{rel}: rewrites '{path}', which this solution does not ship")
+            elif find not in target.read_text(errors="ignore"):
+                out.append(f"{rel}: '{find}' no longer appears in {path} — the rewrite would "
+                           f"replace nothing and the item would deploy bound to its author's "
+                           f"workspace")
+    return out
+
+
 def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
     """Parse a .platform file; malformed JSON is a violation, not a crash."""
     try:
@@ -209,7 +241,7 @@ def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
 
 GUARDS = [guard_unclaimed, guard_logical_ids, guard_platform_names,
           guard_foreign_guids, guard_format_lock, guard_contract_targets,
-          guard_schedule_targets]
+          guard_schedule_targets, guard_parameter_targets]
 
 
 def run(root: pathlib.Path) -> list[str]:

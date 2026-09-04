@@ -103,6 +103,15 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **Portal round-trip fidelity (09-04):** `getDefinition` on our own deployed items
+  shows what authoring in a workspace would commit back. Notebooks, reports and
+  variable libraries are clean. A lakehouse gains `alm.settings.json`. A notebook
+  with a schedule gains `.schedules` — so a schedule *is* part of what the
+  definition API returns, even though fabric-cicd ignores it; whether publishing
+  one back applies it is untested. The semantic model splits its expression out of
+  `model.tmdl` into `expressions.tmdl` with the author's endpoint baked in, which
+  silently breaks `parameter.yml`'s rewrite — now caught by a guard. Warehouses and
+  SQL endpoints have no definition at all (`OperationNotSupportedForItemType`).
 - **What the library already does (09-04):** `item_type_in_scope` defaults to
   every accepted type, so passing a list is redundant; `deploy_with_config`
   raises on failure and returns `DeploymentStatus.completed` otherwise;

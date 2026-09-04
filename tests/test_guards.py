@@ -196,3 +196,35 @@ def test_schedule_for_shipped_item_is_allowed(tmp_path):
     item(tmp_path, "s1", "nb_ingest_orders", "Notebook")
     schedules(tmp_path, "s1", "nb_ingest_orders", "Notebook")
     assert guards.run(tmp_path) == []
+
+
+def parameter_yml(tmp_path, solution, find, file_path):
+    d = tmp_path / solution / "fabric"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "parameter.yml").write_text(
+        f'find_replace:\n  - find_value: "{find}"\n    replace_value:\n'
+        f'      dev: "x"\n    file_path: "{file_path}"\n')
+
+
+def test_parameter_target_missing_file_is_caught(tmp_path):
+    item(tmp_path, "s1", "sm", "SemanticModel")
+    parameter_yml(tmp_path, "s1", "ENDPOINT", "/sm.SemanticModel/definition/model.tmdl")
+    assert any("does not ship" in v for v in guards.run(tmp_path))
+
+
+def test_parameter_placeholder_gone_is_caught(tmp_path):
+    """Fabric moved the expression to expressions.tmdl; model.tmdl no longer
+    holds the placeholder, so the rewrite would silently do nothing."""
+    d = item(tmp_path, "s1", "sm", "SemanticModel")
+    (d / "definition").mkdir()
+    (d / "definition" / "model.tmdl").write_text("model Model\n\tculture: en-US\n")
+    parameter_yml(tmp_path, "s1", "ENDPOINT", "/sm.SemanticModel/definition/model.tmdl")
+    assert any("replace nothing" in v for v in guards.run(tmp_path))
+
+
+def test_parameter_target_intact_is_allowed(tmp_path):
+    d = item(tmp_path, "s1", "sm", "SemanticModel")
+    (d / "definition").mkdir()
+    (d / "definition" / "model.tmdl").write_text('database = Sql.Database("ENDPOINT", "ID")\n')
+    parameter_yml(tmp_path, "s1", "ENDPOINT", "/sm.SemanticModel/definition/model.tmdl")
+    assert guards.run(tmp_path) == []
