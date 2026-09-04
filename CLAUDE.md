@@ -264,6 +264,31 @@ item-reference variable type is still preview, and nothing here has tested wheth
 fabric-cicd publishes a shortcut that references a variable. Worth a spike before the next
 solution is added.
 
+## What could move to the platform
+
+A source-level audit (2026-09-04) of the Fabric Terraform provider v1.13 and
+fabric-cicd, against everything `deploy/` hand-rolls. The conclusion worth leading with:
+**every remaining relocation is in the Terraform provider, not the library.** fabric-cicd
+exports no validation, dry-run or item-resolution helper, so the eight guards and `one()`
+have no upstream equivalent and are not duplicated work.
+
+The provider ships 70 services; this repository uses two. Four are relevant, and their
+preview and service-principal flags come from the provider source rather than the docs:
+
+| Resource | Status | What it would replace | Verdict |
+|---|---|---|---|
+| `fabric_warehouse` | **GA**, SPN | The `.platform`-only folder fabric-cicd publishes to conjure an empty warehouse | **The strongest candidate.** It makes the warehouse's *existence* Terraform's, which is what the plane split says it already is, and removes the `MissingItemDefinitionFiles` blocker that stops a feature workspace syncing the solution folder. Needs `terraform import` of six live warehouses — recreating them would drop the marts |
+| `fabric_shortcut` | **GA**, SPN, and its target may be a Warehouse | `shortcuts.metadata.json`, the contract block in `parameter.yml`, and `export_contract_ids` | **A real trade, not a win.** Terraform knows both workspace IDs already, so nothing would need resolving. But the contract would leave the solution folder, breaking "a solution is a folder", and `guard_contract_targets` reads the shortcut file to catch a renamed mart — a check Terraform cannot make |
+| `fabric_tenant_setting` | **GA**, SPN | The one manual portal step in the quickstart | Blocked by choice, not capability: it needs Fabric admin rights, and D11 keeps admin APIs off for the platform identity |
+| `fabric_onelake_data_access_security` | Preview, SPN | The Contributor over-grant | Still blocked — measured, the underlying API refuses Warehouse regardless of who calls it |
+
+One library relocation is coming but has not shipped. fabric-cicd's `main` parses
+`$workspace.<name>.$items.<type>.<name>.$<attribute>`, which resolves a *cross-workspace*
+item natively — exactly what `export_contract_ids` was written to do. It is absent from the
+pinned 1.3.0 (verified against the installed package, not the docs), which is why the
+contract uses `$ENV:` today. When it ships, `export_contract_ids` and the
+`enable_environment_variable_replacement` flag both delete.
+
 ## Watch list
 
 Upstream changes that should trigger a design revisit — check when bumping tool
