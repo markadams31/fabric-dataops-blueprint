@@ -13,6 +13,8 @@ import pathlib
 import re
 import sys
 
+import yaml
+
 # The project's scope: what fabric-cicd deploys, plus dbt as the
 # transformation engine. A new component type is one driver plus its name here.
 KNOWN_COMPONENTS = {"fabric", "dbt"}
@@ -169,6 +171,31 @@ def guard_contract_targets(root: pathlib.Path) -> list[str]:
     return out
 
 
+def guard_schedule_targets(root: pathlib.Path) -> list[str]:
+    """A declared trigger must name an item the solution actually ships.
+
+    Same silent class as a broken data contract: rename the notebook, leave the
+    schedule behind, and nothing runs — with nothing to see in any log.
+    """
+    out = []
+    for f in sorted(root.rglob("fabric/schedules.yml")):
+        rel = f.relative_to(root)
+        try:
+            doc = yaml.safe_load(f.read_text()) or {}
+        except yaml.YAMLError as e:
+            out.append(f"{rel}: invalid YAML ({e})")
+            continue
+        for s in doc.get("schedules", []):
+            folder = f.parent / f"{s.get('item')}.{s.get('item_type')}"
+            if not folder.is_dir():
+                out.append(f"{rel}: schedules '{s.get('item')}' ({s.get('item_type')}), "
+                           f"which this solution does not ship — the trigger would "
+                           f"never fire and nothing would say so")
+            if not s.get("job_type"):
+                out.append(f"{rel}: '{s.get('item')}' has no job_type")
+    return out
+
+
 def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
     """Parse a .platform file; malformed JSON is a violation, not a crash."""
     try:
@@ -181,7 +208,8 @@ def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
 
 
 GUARDS = [guard_unclaimed, guard_logical_ids, guard_platform_names,
-          guard_foreign_guids, guard_format_lock, guard_contract_targets]
+          guard_foreign_guids, guard_format_lock, guard_contract_targets,
+          guard_schedule_targets]
 
 
 def run(root: pathlib.Path) -> list[str]:

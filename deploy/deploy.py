@@ -22,6 +22,7 @@ import time
 from importlib.metadata import version
 
 import requests
+import yaml
 from azure.identity import AzureCliCredential
 from fabric_cicd import constants, deploy_with_config
 
@@ -151,6 +152,8 @@ def main() -> None:
     print(f"verify ok: {len(wanted)} bundle items present in {ws_name} "
           f"({len(live)} items total)")
 
+    apply_schedules(workdir, headers, ws["id"], live, args.environment)
+
     if (workdir / "dbt").is_dir():
         # Demo ingestion: every environment seeds the same committed sample bytes,
         # standing in for a real solution's per-environment ingestion. Promotion
@@ -170,6 +173,39 @@ def one(items, item_type: str, prefix: str):
         names = [i["displayName"] for i in items if i["type"] == item_type]
         sys.exit(f"expected exactly one {item_type} named {prefix}* — found {names}")
     return found[0]
+
+
+def apply_schedules(workdir, headers, ws_id, items, environment) -> None:
+    """Apply the solution's declared triggers.
+
+    A schedule is not part of an item definition — the REST API carries item
+    content only — so fabric-cicd cannot publish one. Git integration and
+    deployment pipelines move schedules for you; an API-driven release manages
+    them by code, which is Microsoft's own guidance for this path. Declaring
+    them here keeps the trigger in the bundle with the thing it triggers.
+    """
+    f = workdir / "fabric" / "schedules.yml"
+    if not f.is_file():
+        return
+    for s in (yaml.safe_load(f.read_text()) or {}).get("schedules", []):
+        item = next((i for i in items if i["displayName"] == s["item"]
+                     and i["type"] == s["item_type"]), None)
+        if item is None:
+            sys.exit(f"schedules.yml names {s['item_type']} '{s['item']}', which is not deployed")
+        base = f"{API}/workspaces/{ws_id}/items/{item['id']}/jobs/{s['job_type']}/schedules"
+        enabled = bool(s.get("enabled", {}).get(environment, False))
+        body = {"enabled": enabled, "configuration": s["configuration"]}
+        existing = get_all(base, headers)
+        if existing:
+            r = requests.patch(f"{base}/{existing[0]['id']}", headers=headers, json=body, timeout=60)
+            verb = "updated"
+        else:
+            r = requests.post(base, headers=headers, json=body, timeout=60)
+            verb = "created"
+        if r.status_code >= 300:
+            sys.exit(f"schedule for '{s['item']}' failed: HTTP {r.status_code} {r.text[:300]}")
+        print(f"schedule {verb}: {s['item']} ({s['job_type']}) "
+              f"{'enabled' if enabled else 'disabled'} in {environment}")
 
 
 def seed_bronze(cred, headers, ws_id, items) -> None:
