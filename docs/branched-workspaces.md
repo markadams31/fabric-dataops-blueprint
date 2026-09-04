@@ -101,13 +101,44 @@ linting, tests, the repository guards, an offline dbt parse — and on merge the
 publishes to `ws-<solution>-dev` as the deploy identity. Your workspace played no part in
 that: the repository did.
 
+## Reuse it, rather than one per feature
+
+Creating a workspace per feature proliferates fast: three developers with two branches
+each is six workspaces, and every one needs creating, connecting and syncing. Fabric
+supports the alternative — keep the workspace and move it between branches with **Switch
+branch** in the Source control pane.
+
+One constraint decides the shape: a switch target *must contain the same directory* the
+workspace is connected to. A workspace is therefore bound to one solution's folder, which
+makes the natural unit **one workspace per developer per solution** — `ws-sales-dev-mark`
+lives as long as you work on sales, and moves from branch to branch as you do.
+
+| | One per feature | One per developer, per solution |
+|---|---|---|
+| How many exist | One per open branch, across the team | One per person per solution they touch |
+| Starting work | Create, connect, sync each time | Switch branch |
+| Isolation | Complete — nothing survives from the last feature | Switching overrides every item, and deletes items absent from the new branch. Abandoned drafts can linger |
+| Before you move on | Delete the workspace | Commit first: you cannot switch with uncommitted changes |
+| Suits | An occasional change, or a shared demo tenant | Anyone working on features regularly |
+
+Switching is restricted to workspace admins unless someone enables **Allow users with at
+least Contributor role to change Git branch** on that workspace. You are the admin of your
+own, so this only matters if you share one.
+
+Recycling is the better default for a real team; the per-feature flow above is what to do
+the first time, and remains right when a draft is genuinely throwaway.
+
 ## 7. Dispose of it
 
-**Delete the workspace when the pull request merges.** It is a draft space, not an
-environment: nothing in it is a source of truth, and anything worth keeping is already in
-the branch. Commit before you delete — items never committed are simply gone. A deleted
-workspace is restorable for 30 days if you go too early, and leaving them around costs
-capacity and invites someone to treat a draft as real.
+**Delete the workspace when you no longer need it** — when the pull request merges if it
+was per-feature, or when you stop working on that solution if you recycle it. It is a
+draft space, not an environment: nothing in it is a source of truth, and anything worth
+keeping is already in the branch. Commit before you delete — items never committed are
+simply gone. A deleted workspace is restorable for 30 days if you go too early.
+
+An idle workspace does not burn capacity units on its own, so this is about clutter and
+governance rather than cost: every one is another place someone can mistake a draft for
+something real, and another entry an admin has to reason about.
 
 Delete the branch too; GitHub does that for you on merge.
 
