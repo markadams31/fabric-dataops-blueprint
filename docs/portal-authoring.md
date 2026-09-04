@@ -113,6 +113,16 @@ sync shows **Synced**, with the branch and last-synced commit along the bottom.
 
 ## 4. Work
 
+**Know what will and will not work here first.** A synced workspace is not a deployed one:
+Git sync copies definitions exactly as committed, so `parameter.yml` never runs and every
+placeholder stays literal. The semantic model therefore arrives pointing at a server called
+`SALES_WAREHOUSE_ENDPOINT`, its editor refuses to open, and the report reports *"Couldn't
+load the model schema associated with this report."*
+
+So a feature workspace is for **a report's layout and running a notebook**. Editing a
+semantic model, or anything that has to resolve a connection, needs a deployed workspace —
+which means merging and letting the build put it in `ws-<solution>-dev`.
+
 Edit items in the portal as you normally would. Anything you touch flips to
 **Uncommitted** in the Git status column.
 
