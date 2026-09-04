@@ -177,27 +177,6 @@ def test_lakehouse_shortcut_is_not_a_contract(tmp_path):
     assert guards.run(tmp_path) == []
 
 
-def schedules(tmp_path, solution, item, item_type, job_type="RunNotebook"):
-    f = tmp_path / solution / "fabric"
-    f.mkdir(parents=True, exist_ok=True)
-    (f / "schedules.yml").write_text(
-        f"schedules:\n  - item: {item}\n    item_type: {item_type}\n"
-        f"    job_type: {job_type}\n    configuration:\n      type: Cron\n")
-
-
-def test_schedule_for_missing_item_is_caught(tmp_path):
-    """The notebook was renamed; the trigger now names nothing."""
-    item(tmp_path, "s1", "nb_ingest_new", "Notebook")
-    schedules(tmp_path, "s1", "nb_ingest_old", "Notebook")
-    assert any("never fire" in v for v in guards.run(tmp_path))
-
-
-def test_schedule_for_shipped_item_is_allowed(tmp_path):
-    item(tmp_path, "s1", "nb_ingest_orders", "Notebook")
-    schedules(tmp_path, "s1", "nb_ingest_orders", "Notebook")
-    assert guards.run(tmp_path) == []
-
-
 def parameter_yml(tmp_path, solution, find, file_path):
     d = tmp_path / solution / "fabric"
     d.mkdir(parents=True, exist_ok=True)

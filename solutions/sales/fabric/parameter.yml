@@ -15,3 +15,12 @@ find_replace:
         test: "$items.Warehouse.wh_analytics.$id"
         prod: "$items.Warehouse.wh_analytics.$id"
       file_path: "/sm_sales.SemanticModel/definition/model.tmdl"
+    # Whether the ingestion schedule is live. Fabric's own .schedules file is one
+    # file for every environment, so which environments actually run it is a
+    # definition-level rewrite like any other.
+    - find_value: '"SCHEDULE_ENABLED"'
+      replace_value:
+        dev: "false"
+        test: "false"
+        prod: "true"
+      file_path: "/nb_ingest_orders.Notebook/.schedules"

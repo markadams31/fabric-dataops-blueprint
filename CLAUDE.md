@@ -120,16 +120,15 @@ round of live testing settled:
   bundle (a bundle has no git history, and promotion deploys an old one), and
   moving demo seeding into the ingestion notebook relocates code rather than
   removing it — deploys would then have to wait on a Spark session.
-- **Schedules as code (09-04):** an item's REST definition carries content only
-  (a DataPipeline's is `pipeline-content.json` + `.platform`), so fabric-cicd
-  cannot publish a schedule — it has no notion of them. `.schedules` is a Git
-  integration artefact, and fabric-cicd would upload any file in an item folder
-  as a definition part, so schedules live in `fabric/schedules.yml` beside
-  `parameter.yml` and are applied through the Job Scheduler API. Create and
-  update both verified live against `ws-sales-dev`; updates reuse the schedule
-  id rather than stacking duplicates. Fabric auto-disables a scheduler after
-  roughly ten consecutive failures, which is why they ship disabled while the
-  capacity pauses.
+- **Schedules as code (09-04):** a `.schedules` file in the item folder is
+  published by fabric-cicd as a definition part and Fabric applies it — verified by
+  deleting a notebook's schedule, deploying, and seeing it return with the declared
+  interval. Per-environment `enabled` works through a `parameter.yml` rewrite of
+  `"SCHEDULE_ENABLED"`. This contradicts Microsoft's matrix, which says the public
+  API means managing schedules by code; an earlier custom `schedules.yml` mechanism
+  was built on that assumption and then deleted. Note Fabric auto-disables a
+  scheduler after roughly ten consecutive failures, which is why the sales schedule
+  ships disabled while the capacity pauses.
 - **Torture + clean-slate rebuild (09-03):** the whole platform was destroyed
   and rebuilt from nothing following the quickstart; both solutions promoted
   through prod. Traps that round found: tenant settings render **soft-deleted

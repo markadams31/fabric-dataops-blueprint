@@ -41,9 +41,8 @@ Most names are yours. Three are not, because the pipeline finds items by them:
 
 ## Triggers
 
-`fabric/schedules.yml` declares when items run. It is applied on every deploy
-through Fabric's Job Scheduler API — schedules are not part of an item
-definition, so they cannot ride along with the item on an API-driven release.
-Each entry names an item this solution ships, its job type, a cron
-configuration, and whether it is enabled per environment. A guard fails the
-pull request if a schedule names an item that no longer exists.
+`fabric/<item>.<Type>/.schedules` declares when an item runs. It is Fabric's own
+format — the same file a workspace writes when you commit from the portal — and
+fabric-cicd publishes it with the rest of the definition, so a trigger travels in
+the bundle with the thing it triggers. Which environments actually run it is a
+`parameter.yml` rewrite of the `enabled` flag, like any other per-environment value.

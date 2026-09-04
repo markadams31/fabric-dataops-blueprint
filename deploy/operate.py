@@ -14,7 +14,6 @@ import sys
 import time
 
 import requests
-import yaml
 from azure.identity import AzureCliCredential
 
 from deploy import API, get_all, run_dbt
@@ -42,14 +41,16 @@ def main() -> None:
         # A rename outside the convention would otherwise turn the heartbeat into
         # a green no-op while ingestion silently stopped running.
         sys.exit("workspace has notebooks but none named nb_ingest* — ingestion would silently not run")
-    # An item that triggers itself on Fabric's scheduler must not be pushed from
-    # here as well: enabling a schedule is meant to be one line, not two.
-    sched = pathlib.Path("solutions") / args.solution / "fabric" / "schedules.yml"
-    scheduled = {s["item"] for s in (yaml.safe_load(sched.read_text()) or {}).get("schedules", [])
-                 if s.get("enabled", {}).get(args.environment)} if sched.is_file() else set()
-    if nb and nb["displayName"] in scheduled:
-        print(f"{nb['displayName']} runs on Fabric's own scheduler — not triggering it here")
-        nb = None
+    # An item that triggers itself on Fabric's own scheduler must not be pushed
+    # from here as well. The schedule ships in the item's definition, so the
+    # workspace is the authority on whether it is live.
+    if nb:
+        live_schedules = requests.get(
+            f"{API}/workspaces/{ws['id']}/items/{nb['id']}/jobs/Execute/schedules",
+            headers=headers, timeout=60).json().get("value") or []
+        if any(s.get("enabled") for s in live_schedules):
+            print(f"{nb['displayName']} runs on Fabric's own scheduler — not triggering it here")
+            nb = None
 
     if nb:
         print(f"running {nb['displayName']} via the Job Scheduler")
