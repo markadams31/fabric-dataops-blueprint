@@ -221,12 +221,29 @@ relies on that has *not* been, so a reader can tell the difference. Audited 2026
 | The Git APIs accept a service principal — **write half only** | Nothing depends on it | Read is measured (HTTP 200, 2026-09-04). Connect, commit and update need a Git credential and remain untested here |
 | Two builds dispatched simultaneously serialise correctly | Implied by the per-solution concurrency groups | The schedule-versus-promote collision was tested and serialised. Two concurrent builds were not |
 | The feature-workspace alternatives work — provision-on-request, or Terraform-declared per-developer workspaces | `portal-authoring.md` offers both | Designs, not implementations. Neither has been built |
+| Pausing the capacity degrades warehouse recovery granularity | `path-to-production.md`, the recovery section | **Inference, not measurement.** Two documented facts — restore points are created only while Active on an eight-hour cycle, and retention counts calendar days including paused time — combined into a conclusion nobody here has observed by watching restore points accumulate |
+| The three diagrams added on 2026-09-04 render on GitHub | README, `tooling.md`, `portal-authoring.md` | Not verified. The blob view virtualises content and mermaid.live rejected the payload, so the diagrams were instead constrained to constructs already proven to render in this repository. Mitigation, not verification |
+| An idle workspace costs nothing | Was asserted in `portal-authoring.md`; **claim removed 2026-09-04** rather than left unattributed | The guidance it supported — delete for clutter and governance reasons — stands without it |
 | Delegated shortcuts remove the need for the Contributor contract grant | Watch list, as the replacement to wait for | Preview, and untested here. The claim rests on Microsoft's description |
 
 Two things worth saying about this table. It is deliberately not a defect list — several rows
 are fine to leave open on a demonstration repository, and closing them all would cost more
 than it returns. And the first row is the one that matters, because the documentation sends
 people down that path.
+
+**One design decision is worth revisiting, and the reasoning behind it is narrower than it
+looks.** `parameter.yml` was chosen over a variable library because semantic-model TMDL
+cannot read a library and `notebookutils.variableLibrary` has no service-principal support.
+Both are true — and neither applies to the cross-solution contract, which is a *lakehouse
+shortcut*. Shortcuts are a documented variable-library consumer, and Microsoft's guidance
+names this exact case: *"when designing multi-workspace solutions, use item reference
+variables in a variable library to manage item dependencies that span workspace
+boundaries."* An item-reference variable holds a workspace ID and an item ID — precisely the
+two values `solutions/finance/fabric/parameter.yml` hard-codes six times. The library would
+have to live in the consuming workspace, which is allowed. Blockers before adopting: the
+item-reference variable type is still preview, and nothing here has tested whether
+fabric-cicd publishes a shortcut that references a variable. Worth a spike before the next
+solution is added.
 
 ## Watch list
 
