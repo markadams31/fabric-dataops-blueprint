@@ -169,6 +169,28 @@ round of live testing settled:
   brand-new service principals 404 on group-add for ~2 min (re-apply); a
   sibling solution's red must not gate promotion (provenance is per-solution).
 
+## Untested claims
+
+The evidence register says what was measured. This says what the repository asserts or
+relies on that has *not* been, so a reader can tell the difference. Audited 2026-09-04.
+
+| Claim | Where it appears | Status |
+|---|---|---|
+| A report or semantic model edited **in the portal** commits back cleanly | `path-to-production.md` recommends the portal for reports | **The known gap.** All round-trip fidelity was observed through `getDefinition`, which is the export path. The semantic model proves the two serialisers differ — `getDefinition` splits `expressions.tmdl`, Git integration does not. Only a notebook edit has been committed from a branched workspace |
+| Power BI Desktop is a usable authoring path | `path-to-production.md` lists it, now with the caveat inline | Never exercised. No Windows here, and the Windows-in-Docker spike was dropped. Desktop save fidelity for a hand-authored PBIR is unknown |
+| The Fabric Data Engineering VS Code extension edits locally and runs on remote Spark | `path-to-production.md` offers it as the notebook alternative | Taken from Microsoft's documentation, not run here |
+| `executeQueries` works for a service principal with the Power BI audience and the Power BI SP switch | Watch list | The 401 was measured against the *Fabric* switch. The retest was never run; dbt singular tests are the smoke path meanwhile |
+| Publishing a `.schedules` returned by `getDefinition` applies it | Evidence register notes it | Publishing a *hand-written* `.schedules` was verified. Round-tripping one was not |
+| The Git APIs accept a service principal | Nothing depends on it; recorded as resolved doc contradiction | The specs mark the operations conditionally supported. Every Git call this repository has made ran as a user |
+| Two builds dispatched simultaneously serialise correctly | Implied by the per-solution concurrency groups | The schedule-versus-promote collision was tested and serialised. Two concurrent builds were not |
+| The branched-workspace alternatives work — provision-on-request, or Terraform-declared per-developer workspaces | `branched-workspaces.md` offers both | Designs, not implementations. Neither has been built |
+| Delegated shortcuts remove the need for the Contributor contract grant | Watch list, as the replacement to wait for | Preview, and untested here. The claim rests on Microsoft's description |
+
+Two things worth saying about this table. It is deliberately not a defect list — several rows
+are fine to leave open on a demonstration repository, and closing them all would cost more
+than it returns. And the first row is the one that matters, because the documentation sends
+people down that path.
+
 ## Watch list
 
 Upstream changes that should trigger a design revisit — check when bumping tool
