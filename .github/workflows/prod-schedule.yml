@@ -90,9 +90,9 @@ jobs:
           [ "$S" = "Active" ] || { echo "capacity did not resume — failing here rather than downstream"; exit 1; }
       - if: steps.promoted.outputs.sha != ''
         run: uv sync --frozen --no-dev
-      - name: operate ${{ matrix.solution }} prod
+      - name: rebuild the marts (${{ matrix.solution }} prod)
         if: steps.promoted.outputs.sha != ''
-        run: uv run python deploy/operate.py --solution ${{ matrix.solution }} --environment prod
+        run: uv run python deploy/run_dbt.py --solution ${{ matrix.solution }} --environment prod
       - name: notify on failure
         if: failure()
         env:
