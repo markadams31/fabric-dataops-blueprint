@@ -19,6 +19,33 @@ longer has, its state is irreplaceable. Such tables are systems of record and mu
 [what rolls back and what does not](docs/path-to-production.md#what-rolls-back-and-what-does-not)
 says which table in this solution is one and which platform mechanisms exist for it.
 
+## Working against the grain
+
+Fabric's native model is the opposite of this one: **the workspace is the source of truth.**
+That is not a habit its users fell into, it is what the primitives do. Git integration
+synchronises workspace *state* rather than publishing a build. Deployment pipelines copy
+items from one workspace into another. Variables bind at runtime, inside a workspace. An item
+definition is, literally, what the portal would have written.
+
+This repository asserts the reverse — the repository is the truth, and a tested artefact moves
+between environments — and that single disagreement is where nearly every difficulty in it
+comes from. Naming it early is worth more than any individual workaround, because the friction
+then stops looking like a series of defects and starts looking like the cost of the position:
+
+- A workspace synced from Git gets **un-parameterised** definitions, because a sync is not a
+  deploy. Git hands over the repository's bytes, and those bytes are placeholders.
+- Two first-party serialisers disagree about the same item, because one serves the portal
+  round trip and the other serves the definition API, and nothing had to reconcile them until
+  someone tried to build artefacts from both.
+- Warehouse Git integration wants to own the schema as a database project, because the
+  platform assumes a workspace owns its warehouse — where here, dbt does.
+
+None of those is a defect, and none of them is avoidable while holding this position. They are
+the toll, and it is only worth paying when the requirements are real: the repository must be
+the source of truth, changes must be tested before production, something outside Fabric takes
+part, and more than one team needs isolation. **Where those are negotiable, Fabric's own
+tooling is simpler and the better answer** — which is what the next section is for.
+
 ## Choosing a release process
 
 Microsoft's guidance names [three ways to release changes to Fabric workspaces](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd),
