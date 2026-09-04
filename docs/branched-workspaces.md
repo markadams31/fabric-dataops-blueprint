@@ -1,12 +1,33 @@
-# Working in a branched workspace
+# Authoring in the portal, on your own branch
 
-A branched workspace is a Fabric workspace of your own, connected to your feature
-branch. Use it when a change is easier to make in the portal than in a text editor —
-a report, a semantic model, a notebook you want to run interactively.
+Some changes are easier to make in Fabric than in a text editor — a report, a semantic
+model, a notebook you want to run interactively. This is how to do that without anyone
+editing a shared workspace.
 
 The rule that makes it safe: **writes go to your workspace, reads come from the shared
 one.** Nobody can write to `ws-<solution>-dev` — the team holds Viewer there — so your
 workspace is where drafting happens, and a pull request is how it becomes real.
+
+## What Microsoft calls this, and how this repository differs
+
+Microsoft's [branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace)
+is a workspace **linked to a source workspace**. You create one with **Branch out to
+another workspace** from a Git-connected workspace's Source control pane: Fabric cuts a
+new branch from the source workspace's branch, creates the workspace, connects it, and
+syncs it — one command. The link it establishes is what gives you the parent in the
+workspace tree, breadcrumbs back to the source, and the **Related Branches** tab.
+
+**No workspace here is connected to Git.** `ws-<solution>-dev` is a deployment target
+like test and prod, which is a [deliberate choice with a cost](tooling.md#what-this-repository-chose),
+and this is the cost: there is no source workspace to branch out *from*, so the command
+does not appear. What follows is the manual equivalent — an isolated workspace on your own
+branch that round-trips through Git exactly the same way.
+
+What you give up is the relationship, not the isolation: no parent in the workspace tree,
+no breadcrumbs, no Related Branches tab. If you want it later, Microsoft has a preview
+[Create Workspace Relation API](https://learn.microsoft.com/rest/api/fabric/core/git/create-workspace-relation)
+intended for exactly this case — an automation that prepared the branch, the workspace and
+the Git connection itself.
 
 ## Before you start
 
@@ -14,6 +35,7 @@ workspace is where drafting happens, and a pull request is how it becomes real.
 |---|---|
 | Membership of `grp-fabric-workspace-creators` | It carries workspace-creation rights, and the *Users can sync workspace items with GitHub repositories* tenant setting is scoped to it. Without it, connecting fails with `FeatureNotAvailable` and names no setting |
 | A [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with **Contents: read and write** on this repository | Fabric's GitHub connector authenticates with a token, not with your Microsoft sign-in. This is the one secret the design sanctions, it is yours alone, and a short expiry is fine |
+| Capacity headroom | A workspace needs a capacity, and this demo's is paused most of the time — resume it first |
 
 ## 1. Create the branch first
 
@@ -36,9 +58,10 @@ then point it at the repository, your branch, and the solution's folder.
 
 ![Git integration settings showing the repository, folder and branch](images/branched-workspace-git-settings.png)
 
-Fabric then offers to fill the workspace from the branch — accept it. Every item that
-synced shows **Synced** in the workspace list, with the branch and last-synced commit
-along the bottom.
+Fabric then offers to fill the workspace from the branch — accept it. Only
+[Git-supported item types](https://learn.microsoft.com/fabric/cicd/git-integration/intro-to-git-integration#supported-items)
+arrive; anything else the solution deploys simply will not be there. Every item that did
+sync shows **Synced**, with the branch and last-synced commit along the bottom.
 
 ![The workspace list with a Git status column and the branch in the footer](images/branched-workspace-synced.png)
 
@@ -59,6 +82,11 @@ and rewrites line endings, so items you never opened can appear as modified — 
 screenshot above shows exactly that: `nb_ingest_orders` is a genuine edit, `lh_bronze` is
 whitespace. Read the list before you commit and uncheck what you did not mean to touch.
 
+To move to a different branch, use **Switch branch** in the same pane rather than
+disconnecting. Commit first: you cannot switch with uncommitted changes, every item is
+overridden by the new branch's version, and an item that exists only in the old branch is
+deleted.
+
 ## 6. Open a pull request
 
 From here it is the ordinary path. The pull request runs the same gates as any other —
@@ -69,11 +97,12 @@ that: the repository did.
 ## 7. Dispose of it
 
 **Delete the workspace when the pull request merges.** It is a draft space, not an
-environment: nothing in it is a source of truth, and anything worth keeping is in the
-branch. A deleted workspace is restorable for 30 days if you delete one too early, and
-leaving them around costs capacity and invites someone to treat a draft as real.
+environment: nothing in it is a source of truth, and anything worth keeping is already in
+the branch. Commit before you delete — items never committed are simply gone. A deleted
+workspace is restorable for 30 days if you go too early, and leaving them around costs
+capacity and invites someone to treat a draft as real.
 
-Delete the branch too — GitHub does it for you on merge.
+Delete the branch too; GitHub does that for you on merge.
 
 ## What does not sync today
 
