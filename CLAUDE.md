@@ -103,6 +103,14 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **What the library already does (09-04):** `item_type_in_scope` defaults to
+  every accepted type, so passing a list is redundant; `deploy_with_config`
+  raises on failure and returns `DeploymentStatus.completed` otherwise;
+  `FabricWorkspace` resolves a workspace by name. Two things that look like
+  wins are not: the library's git-diff change detection cannot work on a
+  bundle (a bundle has no git history, and promotion deploys an old one), and
+  moving demo seeding into the ingestion notebook relocates code rather than
+  removing it — deploys would then have to wait on a Spark session.
 - **Schedules as code (09-04):** an item's REST definition carries content only
   (a DataPipeline's is `pipeline-content.json` + `.platform`), so fabric-cicd
   cannot publish a schedule — it has no notion of them. `.schedules` is a Git

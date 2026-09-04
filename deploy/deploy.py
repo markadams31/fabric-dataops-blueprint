@@ -9,7 +9,6 @@ deploy identity.
 """
 
 import argparse
-import collections
 import hashlib
 import json
 import os
@@ -24,7 +23,7 @@ from importlib.metadata import version
 import requests
 import yaml
 from azure.identity import AzureCliCredential
-from fabric_cicd import constants, deploy_with_config
+from fabric_cicd import deploy_with_config
 
 API = "https://api.fabric.microsoft.com/v1"
 
@@ -64,14 +63,6 @@ def get_all(url: str, headers: dict) -> list:
     return rows
 
 
-# Full scope, always: fabric-cicd resolves cross-item references only within one
-# invocation, so partial scopes create broken deploys (live-verified; see the
-# evidence register in CLAUDE.md). The library
-# owns the list — hardcoding a copy here would silently go stale as Fabric adds
-# item types (the enum grew to 30 while this repo was being built).
-ITEM_TYPES = list(constants.ACCEPTED_ITEM_TYPES)
-
-
 def content_digest(root: pathlib.Path) -> str:
     h = hashlib.sha256()
     for f in sorted(p for p in root.rglob("*") if p.is_file()):
@@ -109,25 +100,16 @@ def main() -> None:
     headers = {"Authorization": f"Bearer {token}"}
 
     ws_name = f"ws-{args.solution}-{args.environment}"
-    workspaces = get_all(f"{API}/workspaces", headers)
-    ws = next((w for w in workspaces if w["displayName"] == ws_name), None)
+    ws = next((w for w in get_all(f"{API}/workspaces", headers)
+               if w["displayName"] == ws_name), None)
     if not ws:
-        sys.exit(f"workspace {ws_name} not visible to this identity "
-                 f"(visible: {[w['displayName'] for w in workspaces]})")
+        sys.exit(f"workspace {ws_name} not visible to this identity")
 
-    caps = get_all(f"{API}/capacities", headers)
-    cap = next((c for c in caps if c["id"] == ws.get("capacityId")), None)
-    if cap and cap.get("state") != "Active":
-        sys.exit(f"capacity '{cap['displayName']}' is {cap.get('state')} — resume it before deploying")
-    if not cap:
-        # Deploy identities hold no capacity permission, so this is the common case:
-        # the state cannot be preflighted, and a paused capacity surfaces later as
-        # fabric-cicd's CapacityNotActive error (see the maintainer notes).
-        print("note: workspace capacity not visible to this identity — state not preflighted")
-
+    # No item-type list: the library defaults to every type it accepts, which is
+    # what full-scope publishing needs — it resolves cross-item references only
+    # within one invocation, so a partial scope deploys something broken.
     core = {"workspace_id": ws["id"],
-            "repository_directory": str(workdir / "fabric"),
-            "item_types_in_scope": ITEM_TYPES}
+            "repository_directory": str(workdir / "fabric")}
     if (workdir / "fabric" / "parameter.yml").is_file():
         # deploy_with_config does not auto-discover parameter.yml — point at it.
         core["parameter"] = str(workdir / "fabric" / "parameter.yml")
@@ -138,19 +120,11 @@ def main() -> None:
         config_override={"core": core},
     )
     print(f"fabric-cicd: {result.status.value} — {result.message}")
+    # The library raises on failure; this catches a non-raising "failed" result.
+    if result.status.value != "completed":
+        sys.exit(f"publish did not complete: {result.message}")
 
-    # Verify: every item in the bundle exists in the workspace.
-    wanted = collections.Counter()
-    for p in (workdir / "fabric").glob("*/.platform"):
-        meta = json.loads(p.read_text())["metadata"]
-        wanted[(meta["type"], meta["displayName"])] += 1
     live = get_all(f"{API}/workspaces/{ws['id']}/items", headers)
-    have = {(i["type"], i["displayName"]) for i in live}
-    missing = [k for k in wanted if k not in have]
-    if missing:
-        sys.exit(f"verify FAILED — deployed but not found: {missing}")
-    print(f"verify ok: {len(wanted)} bundle items present in {ws_name} "
-          f"({len(live)} items total)")
 
     apply_schedules(workdir, headers, ws["id"], live, args.environment)
 
