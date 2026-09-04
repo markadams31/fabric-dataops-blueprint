@@ -105,6 +105,18 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **Four flip-prone claims probed as the deploy identity (09-04, `verify-claims`):**
+  every claim in this repository that had reversed was one a documentation page
+  alone supported, so the four most load-bearing were called against the API.
+  **Activator accepts a service principal** — HTTP 201, item created and removed as
+  `mi-deploy-sales`, so the swagger spec was right and the item-management matrix is
+  wrong. **`executeQueries` is still 401** (`PowerBINotAuthorizedException`) even with
+  the `analysis.windows.net/powerbi/api` audience, which was the outstanding doubt —
+  the wall is real, and dbt singular tests stay the smoke path. **The Git APIs answer a
+  service principal** — `GET git/connection` returned 200, so the warehouse page saying
+  otherwise is measured-wrong, not merely contradicted; the write half (connect, commit)
+  still needs a PAT and is untested. **OneLake roles on a warehouse fail for the MI too**,
+  the same `UniversalSecurityFeatureDisabledForArtifactType` seen as a user.
 - **Portal round trip, measured end to end (09-04):** a report was edited in the
   portal of a feature workspace synced from a branch, then committed. The diff is
   exactly the edit — a new page directory plus an updated `pages.json` — and the
@@ -204,9 +216,9 @@ relies on that has *not* been, so a reader can tell the difference. Audited 2026
 | ~~A report or semantic model edited **in the portal** commits back cleanly~~ | — | **Closed 2026-09-04.** Measured: a portal report edit commits back as exactly that edit, and the semantic model is untouched by the commit. The semantic model turned out not to be authorable in a feature workspace at all, for a different reason — see the evidence register |
 | Power BI Desktop is a usable authoring path | `path-to-production.md` lists it, now with the caveat inline | Never exercised. No Windows here, and the Windows-in-Docker spike was dropped. Desktop save fidelity for a hand-authored PBIR is unknown |
 | The Fabric Data Engineering VS Code extension edits locally and runs on remote Spark | `path-to-production.md` offers it as the notebook alternative | Taken from Microsoft's documentation, not run here |
-| `executeQueries` works for a service principal with the Power BI audience and the Power BI SP switch | Watch list | The 401 was measured against the *Fabric* switch. The retest was never run; dbt singular tests are the smoke path meanwhile |
+| ~~`executeQueries` works with the Power BI audience~~ | — | **Closed 2026-09-04.** Re-tested with the correct audience: still 401. The wall is real |
 | Publishing a `.schedules` returned by `getDefinition` applies it | Evidence register notes it | Publishing a *hand-written* `.schedules` was verified. Round-tripping one was not |
-| The Git APIs accept a service principal | Nothing depends on it; recorded as resolved doc contradiction | The specs mark the operations conditionally supported. Every Git call this repository has made ran as a user |
+| The Git APIs accept a service principal — **write half only** | Nothing depends on it | Read is measured (HTTP 200, 2026-09-04). Connect, commit and update need a Git credential and remain untested here |
 | Two builds dispatched simultaneously serialise correctly | Implied by the per-solution concurrency groups | The schedule-versus-promote collision was tested and serialised. Two concurrent builds were not |
 | The feature-workspace alternatives work — provision-on-request, or Terraform-declared per-developer workspaces | `portal-authoring.md` offers both | Designs, not implementations. Neither has been built |
 | Delegated shortcuts remove the need for the Contributor contract grant | Watch list, as the replacement to wait for | Preview, and untested here. The claim rests on Microsoft's description |
@@ -229,7 +241,7 @@ versions.
 | Full-Lakehouse / Warehouse-schema deployment | fabric-cicd feature requests | Ships | **Do not adopt blindly** — would overlap dbt's ownership of the warehouse (one owner per store) |
 | Warehouse Git integration | **Already shipped, in preview** — [commits the warehouse as a DacFx database project](https://learn.microsoft.com/fabric/data-warehouse/git-integration) of `.sql` files. Its own limitations page lists no selective commits, no SQL-analytics-endpoint version control, and SQL permissions needing separate export | Leaves preview | **Still do not adopt** — this is the same one-owner-per-store collision, now real rather than hypothetical: DacFx would own the schema dbt owns. The forum reports no way to exclude warehouse files from Git tracking once a workspace is connected, so the two cannot easily coexist. Relevant only if dbt ever leaves |
 | `deploy_with_config` | [config-based deployment](https://microsoft.github.io/fabric-cicd/latest/how_to/config_deployment/) | When orphan control / per-environment publish differences land here | Candidate replacement for the publish block in `deploy.py` |
-| `executeQueries` for service principals | Power BI REST API | **Re-test before assuming a wall**: this is a *Power BI* API needing the `analysis.windows.net/powerbi/api` audience and the *Power BI* SP switch — a different setting from the Fabric one we enumerated. Documented fallback if it still fails: query the SQL analytics endpoint with Entra auth, where SP support is explicit | Reinstate a DAX smoke against the semantic model |
+| `executeQueries` for service principals | **Re-tested 2026-09-04 with the `analysis.windows.net/powerbi/api` audience — still 401** `PowerBINotAuthorizedException`. The doubt is now settled: the wall is real, not an audience mistake | A Power BI release note changes it; re-run `verify-claims` | Reinstate a DAX smoke against the semantic model. Until then dbt singular tests are the smoke path, and the SQL analytics endpoint with Entra auth is the documented fallback |
 | Finer-grained OneLake read | **Tried and blocked, measured 2026-09-04.** OneLake security roles are GA but [support only Lakehouse, mirrored databases and mirrored catalogs](https://learn.microsoft.com/fabric/onelake/security/data-access-control-model#permissions-and-supported-items) — not Warehouse, which is what our contract shortcut targets. Item-level sharing is closed as well: warehouse sharing is [UI-only and not supported for service principals](https://learn.microsoft.com/fabric/data-warehouse/share-warehouse-manage-permissions#limitations) | Warehouse becomes a supported item type, **or** [delegated shortcuts](https://learn.microsoft.com/fabric/onelake/shortcuts/create-onelake-shortcut) leave preview | Delegated shortcuts are the real replacement — a fixed identity on the shortcut means the consumer needs no grant on the producer at all. Until then Contributor stays, and the reason is now recorded in `solutions.tf` rather than implied |
 | PBIR becomes the enforced report format | Fabric release notes | GA (announced Q3 2026) | Format already used here; confirm nothing breaks |
 | Fabric Git integration read-write requirement | [Git limitations](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations) | 2026-12-01 | Verify feature-workspace flow for Viewer-only users |
@@ -257,8 +269,8 @@ and Activator's own REST reference page both answer Yes; only the
 [item-type matrix](https://learn.microsoft.com/rest/api/fabric/articles/item-management/item-management-overview),
 last dated 2025-03-25, says otherwise — and it disagrees with the reference pages on
 Mirrored Database and Mirrored Azure Databricks Catalog too. Event-driven orchestration
-on Activator is therefore an open option, not a closed one, and worth a live test before
-either claim goes in a public document. One caveat survives the correction, and it is the
+on Activator is therefore not closed — and a live test on 2026-09-04 settled it outright:
+creating a Reflex item as `mi-deploy-sales` returned HTTP 201. The matrix is wrong. One caveat survives the correction, and it is the
 one that would bite here: Activator items using certain sources and actions
 [error outright](https://learn.microsoft.com/fabric/real-time-intelligence/data-activator/activator-limitations)
 in a Git-integrated workspace or a deployment pipeline, with support "planned for a future
@@ -273,9 +285,9 @@ item in the operation supports service principals — and Initialize Connection,
 and Disconnect as supported outright. Two dedicated Learn how-to pages walk through
 connecting a workspace as a service principal. The same stale page is wrong in the other
 direction as well, since Deploy Stage Content is conditional rather than unrestricted.
-Nothing here has been run against those APIs as a service principal, so this repository
-still has no first-hand measurement — but the design should not be shaped around a
-prohibition that the machine-readable source denies.
+Measured 2026-09-04: `GET git/connection` as `mi-deploy-sales` returned HTTP 200, so the
+prohibition is wrong rather than merely contested. The write half — connect, commit,
+update — needs a Git credential and is still untested here.
 
 One contradiction stays open. CI/CD support for the SQL analytics endpoint was announced
 as preview in June 2026, while later-dated warehouse docs say version control for it

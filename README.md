@@ -155,8 +155,9 @@ the `capacity` workflow is the resume button.
 
 Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md)
 for how a change travels and [the tooling and choices](docs/tooling.md) for what else was possible and
-what each option costs; adopting it — [the quickstart](docs/quickstart.md); authoring in the portal —
-[authoring in the portal](docs/portal-authoring.md); maintaining it — the
+what each option costs; adopting it — [the quickstart](docs/quickstart.md); writing a change —
+[authoring locally](docs/local-authoring.md) or [in the portal](docs/portal-authoring.md);
+maintaining it — the
 maintainer notes in [CLAUDE.md](CLAUDE.md).
 
 MIT-licensed. One maintainer, best effort.

@@ -191,6 +191,48 @@ something real, and another entry an admin has to reason about.
 
 Delete the branch too; GitHub does that for you on merge.
 
+## What a Git-connected workspace does to this repository
+
+Tested, rather than assumed — a workspace was connected to a feature branch pointed at
+`solutions/sales/fabric`, and the results are worth knowing before you try it.
+
+**Two things stop the sync outright:**
+
+| Symptom | Cause |
+|---|---|
+| `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform` — deliberately, so fabric-cicd creates an empty warehouse for dbt to fill. Git integration expects a warehouse to carry a DacFx database project there, and refuses the whole directory rather than just that item. Not a claim that warehouses cannot be serialised: the definition API refuses them, Git integration does not |
+| `InvalidArtifactJobSchedulerException` | Hit when `.schedules` held `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. The file now ships a literal `false` and `parameter.yml` rewrites that instead, so this no longer occurs here — the lesson generalises: placeholders survive in free-form files like TMDL and fail wherever Fabric validates a schema |
+
+**The bigger constraint is that a synced workspace is not a deployed one.** Git sync copies
+the definitions as committed; it does not run fabric-cicd, so `parameter.yml` never executes
+and every placeholder stays a placeholder. `model.tmdl` commits the line
+`database = Sql.Database("SALES_WAREHOUSE_ENDPOINT", "SALES_WAREHOUSE_ID")`, and that is
+exactly what lands in the workspace — a connection to a server named `SALES_WAREHOUSE_ENDPOINT`.
+Measured consequences: the semantic model's editor refuses to open, and opening the report
+gives *"Couldn't load the model schema associated with this report."* The report editor still
+works, so layout can be changed and committed; nothing data-bound can be.
+
+This is not a defect to fix, it is what parameterisation means — the values are per
+environment, and a feature workspace is not one of them. It does decide what the portal is
+good for here: **drafting a report's layout, and running a notebook.** Anything that needs to
+resolve a connection needs a deployed workspace, which means `ws-<solution>-dev` after a merge.
+
+**And once it does sync, the workspace reports changes you did not make.** With no edit at
+all, `lh_bronze` and `nb_ingest_orders` come back *Modified*, and committing produces a
+diff of pure whitespace: Fabric writes files with no trailing newline, and rewrites
+`.schedules` line endings. Nothing is lost, but every feature workspace starts dirty and
+a careless commit fills the repository with noise.
+
+One thing that did **not** happen, despite the API suggesting it would: Git integration
+left the semantic model untouched. `getDefinition` splits its expression out into a
+separate `expressions.tmdl` with the author's endpoint baked in, but the Git serialiser
+does not — the two paths disagree, and only the API path breaks `parameter.yml`. A guard
+catches that case either way.
+
+The honest summary: authoring in a feature workspace works for items a workspace can
+serialise cleanly, and this repository's solution folder is not one of them today. Treat
+the portal as a place to draft, and the repository as where a change becomes real.
+
 ## What does not sync today
 
 `solutions/<name>/fabric` contains `wh_analytics.Warehouse`, which holds only a
