@@ -125,7 +125,7 @@ Validate and build are cloud-free by construction — that is what makes a pull 
 ```bash
 uv sync                                        # pinned toolchain
 uv run pytest -q                               # the guards' failing fixtures
-uv run python deploy/guards.py                 # the five repository guards
+uv run python deploy/guards.py                 # the repository guards
 uv run python deploy/build.py --solution sales --sha demo
 ```
 

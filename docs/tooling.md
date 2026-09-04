@@ -60,7 +60,9 @@ after a library upgrade.
 ## Choosing
 
 Microsoft's [Choose the best Fabric CI/CD workflow option for you](https://learn.microsoft.com/fabric/cicd/manage-deployment)
-sets out four options. Condensed:
+sets out four options. These are not the three release processes the README lists — that
+list comes from the [best-practices page](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd)
+and groups by *mechanism*, while this one groups by *workflow*. Condensed:
 
 | Option | Source of truth | Branching | Deployment mechanism | Per-stage configuration |
 |---|---|---|---|---|

@@ -58,8 +58,9 @@ are not equally available.
 
 **Locally, in a copy of the repository — the default.** Every item here is a text file:
 TMDL for the semantic model, PBIR for the report, Python for the notebook, SQL for dbt.
-Edit them with whatever fits — Power BI Desktop, VS Code, an ordinary editor — and the
-change reaches the repository as a commit and a push. Nothing needs to be provisioned for
+Edit them with whatever fits — VS Code, an ordinary editor, or Power BI Desktop if you
+have Windows and accept that this repository has never exercised the Desktop round trip —
+and the change reaches the repository as a commit and a push. Nothing needs to be provisioned for
 you, and the whole validation half runs offline: linting, tests, the guards, a dbt parse.
 
 Authoring against real data does not require a workspace of your own either: the team
@@ -190,7 +191,7 @@ Tested, rather than assumed — a workspace was connected to a feature branch po
 | Symptom | Cause |
 |---|---|
 | `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform`. A warehouse has no exportable definition, which fabric-cicd is happy to deploy but Git integration rejects — and it refuses the whole directory, not just that item |
-| `InvalidArtifactJobSchedulerException` | `.schedules` holds `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. Placeholders survive in free-form files like TMDL; they fail wherever Fabric validates a schema |
+| `InvalidArtifactJobSchedulerException` | Hit when `.schedules` held `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. The file now ships a literal `false` and `parameter.yml` rewrites that instead, so this no longer occurs here — the lesson generalises: placeholders survive in free-form files like TMDL and fail wherever Fabric validates a schema |
 
 **And once it does sync, the workspace reports changes you did not make.** With no edit at
 all, `lh_bronze` and `nb_ingest_orders` come back *Modified*, and committing produces a
