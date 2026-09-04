@@ -103,6 +103,14 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **The GitHub provider setting needs the developers too (09-04):** connecting a
+  branched workspace to a branch fails with `FeatureNotAvailable` — "the tenant
+  administrator has not enabled the specified Git provider type" — unless the
+  person doing it is in a group the *Users can sync workspace items with GitHub
+  repositories* setting is scoped to. Scoping it to `grp-fabric-automation` alone
+  covers the pipeline but locks out every human who would author in a branched
+  workspace. The error names no setting, so this is minutes of confusion for an
+  adopter.
 - **Portal round-trip fidelity (09-04):** `getDefinition` on our own deployed items
   shows what authoring in a workspace would commit back. Notebooks, reports and
   variable libraries are clean. A lakehouse gains `alm.settings.json`. A notebook
