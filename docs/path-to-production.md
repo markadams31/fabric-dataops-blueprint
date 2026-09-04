@@ -18,52 +18,38 @@ path, just faster.
 
 ## The three workspaces
 
-Every solution gets `ws-<solution>-dev`, `-test` and `-prod`, created by one Terraform
-module iterating over the three names. They are identical by construction: the same
-capacity, the same roles, the same items published from the same bundle. What differs is
-never the workspace itself but what has happened to the bundle inside it — how it
-arrived, who approved it, and what runs there on a timer.
+Each solution has three. **dev proves the bundle, test proves the promotion, prod serves
+the users.**
+
+**dev** takes every merge, unattended, minutes after it lands: a real publish, a real
+`dbt build`, real tests. Promotion refuses any bundle whose dev deploy was not green, so
+dev is both the first environment and the gate. Nobody authors here — unlike the `dev` of
+a deployment pipeline, it holds what the last merge produced and nothing else.
+
+**test** takes the same bytes, into a workspace that did not build them. That is the only
+way to find out whether the values that differ per environment actually rebind — the
+semantic model's endpoint, the shortcut into another solution's gold, the value set, the
+connection string. An ID that is hard-coded but right in dev is wrong here, and fails
+here. It is also the first gate a human stands at.
+
+**prod** is the only workspace with a live schedule, and the only one the nightly run
+touches. That run operates the commit prod was promoted at, not `main`, so merging cannot
+reach production behind the approvals. Rollback is promote pointed at an older build.
 
 | | dev | test | prod |
 |---|---|---|---|
-| A bundle arrives | automatically, on every merge to `main` | by the promote workflow | by the promote workflow, after test |
-| Approval | none | a reviewer on `<solution>-test` | a reviewer on `<solution>-prod` |
-| Schedules | off | off | on |
-| Operated nightly | no | no | yes, at the promoted commit |
+| Deployed by | every merge | promote | promote, after test |
+| Approval | none | one reviewer | one reviewer |
+| Ingestion schedule | off | off | on |
+| Nightly run | no | no | yes |
 
-**dev is the first cloud proof, and the gate.** The build deploys there unattended in the
-same run that produced the bundle, so a merge is answered within minutes by a real
-publish, a real `dbt build`, and its tests against real Fabric. Promotion then refuses any
-bundle whose dev deploy is not green — `promote` reads that job's conclusion before it
-will move anything. Unlike the `dev` of a deployment pipeline, it is not where
-anyone authors: it holds what the last merge produced and nothing else.
+The workspaces themselves are identical — one Terraform module builds all three with the
+same capacity, roles and identity — so what a workspace *is* never varies; only what has
+happened to the bundle inside it. Three simplifications come with that:
 
-**test is the same bytes in a workspace that did not build them.** Nothing is rebuilt: the
-promote workflow downloads the artefact from the original build run. That proves the part
-a single environment cannot — that everything environment-specific resolves somewhere
-else too. The semantic model's endpoint and warehouse ID, finance's shortcut into sales'
-gold, the variable library's value set, the warehouse connection `deploy.py` resolves at
-run time: each is rebound per environment, and a value that is hard-coded but happens to
-be right in dev is wrong in test and fails there. It is also the first gate a human
-stands at.
-
-**prod is the served estate, and the only one that runs on its own.** The ingestion
-schedule ships disabled and `parameter.yml` flips it true for prod alone, so the notebook
-runs on a timer in one workspace out of three. The nightly heartbeat operates prod at the
-commit the Deployments ledger says was promoted there, not at `main`, so a merge cannot
-reach production by way of the schedule. Rollback is the promote workflow pointed at an
-earlier build run.
-
-Three simplifications an adopter should expect to change:
-
-- **One capacity carries all three.** Environments are separated by identity and
-  approval, not by compute — a heavy dev job competes with production for the same F2.
-- **One viewers group covers all three.** `grp-<solution>-viewers` holds Viewer on every
-  workspace, which suits a team that develops against dev and consumes prod. An estate
-  whose production audience is wider than its team splits that group per environment.
-- **Every environment holds the same sample data.** Each deploy seeds the same committed
-  bytes, standing in for a real solution's per-environment ingestion — so test proves the
-  release mechanics and the marts' tests, not behaviour at production volume.
+- One capacity for all three: separation is by permission, not compute.
+- One viewers group for all three: the team sees test and prod alike.
+- The same sample data everywhere: test proves the release, not the volume.
 
 ## Two ways to author, one source of truth
 
