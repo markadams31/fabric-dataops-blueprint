@@ -111,18 +111,32 @@ the execution somewhere that has compute.
 
 ### Which items are worth authoring where
 
-The previous table is about compute. This one is about fidelity: what happens to an item
-when the portal writes it back. The two questions have different answers, and the second
-is the one that decides where a change should start.
+The previous table is about compute. This one is about where a change should *start*, which
+is decided by two things: what happens to an item when the portal writes it back, and whether
+a tool outside Fabric can open it at all.
+
+Microsoft's rule is the one to begin from — *"if the items you're developing are available in
+other tools, you can work on those items directly in the client tool… Items that are only
+available in Fabric need to be developed in Fabric"* — and their guidance names exactly two
+ways to work in isolation:
+[a feature workspace, or client tools](https://learn.microsoft.com/fabric/cicd/git-integration/manage-branches).
+It is explicit that the second usually needs no workspace: *"Developers using a client tool…
+don't necessarily need a workspace… A workspace is needed only as a testing environment."*
+That is this repository's default, and it is worth knowing it is theirs too.
+
+Where this estate departs from their advice is narrow and has one cause. Microsoft names
+[Power BI Desktop for semantic models and reports](https://learn.microsoft.com/fabric/cicd/best-practices-cicd)
+and VS Code for notebooks. Desktop is Windows-only, so on Linux the report falls back to the
+portal and the semantic model falls back to editing TMDL as text.
 
 | Item | Author it | Why |
 |---|---|---|
 | dbt models | **Locally** | Not a Fabric item. There is no portal representation to edit |
-| Warehouse | **Locally** | It has no definition at all — `getDefinition` answers `OperationNotSupportedForItemType` — and dbt owns its schema. A Warehouse folder holding only `.platform` makes Fabric reject the *entire* Git sync with `MissingItemDefinitionFiles`, so it cannot even be present in a feature workspace |
+| Warehouse | **Locally**, as dbt models | dbt owns every table in it. Fabric offers two serialisers and they disagree: the definition API refuses it (`getDefinition` answers `OperationNotSupportedForItemType`, measured) while [Git integration serialises it](https://learn.microsoft.com/fabric/data-warehouse/git-integration) as a DacFx database project of `.sql` files (preview). This repository uses neither — the folder holds only `.platform`, so fabric-cicd creates an empty warehouse and dbt fills it. That empty folder is what makes Git integration reject the *whole* directory with `MissingItemDefinitionFiles` |
 | `.schedules` | **Locally** | Fabric rewrites the line endings, so a portal commit carries whitespace noise whether or not you touched it. It also cannot hold `parameter.yml`'s placeholder in a feature workspace: Fabric validates the schema and a string where a boolean belongs fails with `InvalidArtifactJobSchedulerException` |
-| Report | **Portal**, for layout | The reason the portal exists — without it you need Power BI Desktop and Windows to see a render at all. A portal edit commits back as exactly that edit. But in a feature workspace the visuals cannot bind to data (below), so anything data-driven has to wait for dev |
+| Report | **Desktop** if you have Windows, else the **portal** for layout | Microsoft's first choice is Power BI Desktop. Without Windows the portal is the only way to see a render, and a portal edit commits back as exactly that edit. Either way, in a feature workspace the visuals cannot bind to data (below), so anything data-driven waits for dev |
 | Notebook | **Portal**, when you need to run it | The definition comes back unchanged, and interactive Spark is the one thing no local editor provides |
-| Semantic model | **Locally** — the portal is not an option | It cannot load in a feature workspace at all, and the known trap below applies to the export path |
+| Semantic model | **Locally**, as TMDL | Microsoft's first choice is Desktop; without Windows, TMDL in an editor. The portal is not an option regardless — the model cannot load in a feature workspace at all (below), and the export-path trap below applies |
 | Variable library | Either | The definition comes back unchanged, and it is a small JSON file, so the editor is usually quicker |
 | Lakehouse | Neither | Nothing to author: the definition is a shell and the content is data. A round trip adds an `alm.settings.json` |
 
@@ -193,7 +207,7 @@ Tested, rather than assumed — a workspace was connected to a feature branch po
 
 | Symptom | Cause |
 |---|---|
-| `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform`. A warehouse has no exportable definition, which fabric-cicd is happy to deploy but Git integration rejects — and it refuses the whole directory, not just that item |
+| `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform` — deliberately, so fabric-cicd creates an empty warehouse for dbt to fill. Git integration expects a warehouse to carry a DacFx database project there, and refuses the whole directory rather than just that item. Not a claim that warehouses cannot be serialised: the definition API refuses them, Git integration does not |
 | `InvalidArtifactJobSchedulerException` | Hit when `.schedules` held `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. The file now ships a literal `false` and `parameter.yml` rewrites that instead, so this no longer occurs here — the lesson generalises: placeholders survive in free-form files like TMDL and fail wherever Fabric validates a schema |
 
 **The bigger constraint is that a synced workspace is not a deployed one.** Git sync copies

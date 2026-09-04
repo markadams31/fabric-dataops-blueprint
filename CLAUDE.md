@@ -185,6 +185,15 @@ round of live testing settled:
   brand-new service principals 404 on group-add for ~2 min (re-apply); a
   sibling solution's red must not gate promotion (provenance is per-solution).
 
+One terminology decision is worth recording so it does not get re-litigated. Microsoft uses
+**feature workspace** for the general pattern — a developer's own isolated workspace on a
+feature branch — and **branched workspace** for the specific capability that creates one via
+*Branch out*, with the parent link, breadcrumbs and Related Branches tab. The
+[best-practices page](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd)
+carries both under separate headings. Since no workspace here is Git-connected, branch-out is
+unavailable and what this repository documents is a feature workspace. Using their word for
+their feature, and their other word for ours, is the whole of the convention.
+
 ## Untested claims
 
 The evidence register says what was measured. This says what the repository asserts or
@@ -218,6 +227,7 @@ versions.
 | Validate-only / dry-run mode | [fabric-cicd issues](https://github.com/microsoft/fabric-cicd/issues) | Ships | Add to `pr-validation` as a cloud-free publish check |
 | Schedule pause/resume around deployments | fabric-cicd feature request | Ships | Consider adopting in the deploy phase before prod schedules exist |
 | Full-Lakehouse / Warehouse-schema deployment | fabric-cicd feature requests | Ships | **Do not adopt blindly** — would overlap dbt's ownership of the warehouse (one owner per store) |
+| Warehouse Git integration | **Already shipped, in preview** — [commits the warehouse as a DacFx database project](https://learn.microsoft.com/fabric/data-warehouse/git-integration) of `.sql` files. Its own limitations page lists no selective commits, no SQL-analytics-endpoint version control, and SQL permissions needing separate export | Leaves preview | **Still do not adopt** — this is the same one-owner-per-store collision, now real rather than hypothetical: DacFx would own the schema dbt owns. The forum reports no way to exclude warehouse files from Git tracking once a workspace is connected, so the two cannot easily coexist. Relevant only if dbt ever leaves |
 | `deploy_with_config` | [config-based deployment](https://microsoft.github.io/fabric-cicd/latest/how_to/config_deployment/) | When orphan control / per-environment publish differences land here | Candidate replacement for the publish block in `deploy.py` |
 | `executeQueries` for service principals | Power BI REST API | **Re-test before assuming a wall**: this is a *Power BI* API needing the `analysis.windows.net/powerbi/api` audience and the *Power BI* SP switch — a different setting from the Fabric one we enumerated. Documented fallback if it still fails: query the SQL analytics endpoint with Entra auth, where SP support is explicit | Reinstate a DAX smoke against the semantic model |
 | Finer-grained OneLake read | **Tried and blocked, measured 2026-09-04.** OneLake security roles are GA but [support only Lakehouse, mirrored databases and mirrored catalogs](https://learn.microsoft.com/fabric/onelake/security/data-access-control-model#permissions-and-supported-items) — not Warehouse, which is what our contract shortcut targets. Item-level sharing is closed as well: warehouse sharing is [UI-only and not supported for service principals](https://learn.microsoft.com/fabric/data-warehouse/share-warehouse-manage-permissions#limitations) | Warehouse becomes a supported item type, **or** [delegated shortcuts](https://learn.microsoft.com/fabric/onelake/shortcuts/create-onelake-shortcut) leave preview | Delegated shortcuts are the real replacement — a fixed identity on the shortcut means the consumer needs no grant on the producer at all. Until then Contributor stays, and the reason is now recorded in `solutions.tf` rather than implied |
