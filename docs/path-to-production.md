@@ -31,23 +31,25 @@ Viewer and cannot edit it — deliberately, so the environment cannot drift from
 truth. And a user's personal *My workspace*
 [cannot connect to Git](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations).
 
-Devs can create a
-[branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace) —
-a temporary, isolated workspace connected to a feature branch — and portal edits land
-in the repository like any other commit. When the pull request merges, the workspace
-is deleted — the lifecycle, step by step and with screenshots, is in
-[working in a branched workspace](branched-workspaces.md). One practical note:
-because no shared workspace here is Git-connected,
-the portal's *branch out* button has nowhere to appear — creating one is instead
-create workspace → Workspace settings → Git integration → connect to your branch,
-which yields the identical result.
+Devs can work in a temporary workspace of their own, connected to a feature branch, so
+portal edits land in the repository like any other commit; when the pull request merges,
+the workspace is deleted. The lifecycle, step by step and with screenshots, is in
+[authoring in the portal](branched-workspaces.md).
+
+Worth naming precisely: Microsoft's
+[branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace)
+is a workspace *linked* to a source workspace, created by **Branch out** from a
+Git-connected one — the link is what gives you the workspace tree, breadcrumbs and a
+Related Branches tab. No workspace here is Git-connected, so that command has nothing to
+branch out from. Creating the workspace and connecting it by hand gives the same isolation
+and the same round trip, but not the relationship.
 
 ```mermaid
 flowchart LR
     subgraph YOURS ["Yours — read-write, temporary"]
         IDE["Editor<br/>dbt · notebooks · TMDL · PBIR"]
         CLONE["Local clone<br/>your feature branch"]
-        BW["Branched workspace<br/>Fabric web UI, on your branch"]
+        BW["Your own workspace<br/>Fabric web UI, on your branch"]
     end
     subgraph REPO ["GitHub repository — the source of truth"]
         BR["feature branch"]
@@ -76,7 +78,7 @@ Reads and writes split by construction:
 - **Need dev's data inside your isolated runs?** OneLake shortcuts from your branched
   lakehouse into dev's tables — real input, nothing copied.
 
-### What a branched workspace does to this repository
+### What a Git-connected workspace does to this repository
 
 Tested, rather than assumed — a workspace was connected to a feature branch pointed at
 `solutions/sales/fabric`, and the results are worth knowing before you try it.
