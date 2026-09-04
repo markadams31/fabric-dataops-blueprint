@@ -178,24 +178,52 @@ versions.
 | Associate an identity with items and schedules | Fabric roadmap — target Q4 2026, public preview; [beta API today](https://learn.microsoft.com/rest/api/fabric/articles/item-management/associate-item-identity) | Ships | Removes the deploy-identity-owns-the-item problem and the 30-day owner keep-alive concern |
 | Tenant settings by API | [Update Tenant Setting](https://learn.microsoft.com/rest/api/fabric/admin/tenants/update-tenant-setting) — preview, "not recommended for production", SP and MI supported | Leaves preview | Would make the quickstart's portal step scriptable, removing the only manual step in setup |
 | Delegated branch-out — named **"Branch workspace admin profile"** on the roadmap | Learn states the commitment with **no date**; the only dated source is the roadmap feed (**Q3 2026**, public preview), whose quarters are explicitly at-risk — *lets developers use branch-out without needing create-workspace or assign-capacity permissions; admins pre-configure guardrails — developer role, capacity assignment, admin list* | Ships | Adopt it: it removes the two tenant grants the portal authoring path currently needs, which is the main reason that path is optional here |
+| Item types whose APIs refuse service principals | Machine-readable: every operation in [`microsoft/fabric-rest-api-specs`](https://github.com/microsoft/fabric-rest-api-specs) carries an identity table in its `description`. Of 729 operations, 55 answer **No** — the whole CRUD surface of MLModel, MLExperiment, User Data Functions, Anomaly Detector, Digital Twin Builder, Event Schema Set and Operations Agent, plus admin bulk sensitivity-label set/remove | Adding one of those item types to a solution | **This is a live edge for us.** `item_type_in_scope` is omitted, so fabric-cicd deploys all 29 types — a solution that adds one of these fails as the deploy MI with no gate catching it first. Verify against the specs before adding an item type, not after |
+| Spark runtime default changes under us | [Runtime 2.0](https://learn.microsoft.com/fabric/data-engineering/runtime-2-0) — Spark 4.1, Python 3.13, Delta 4.2 — becomes the default for the UX and for new workspaces in **late September 2026**; Runtime 1.3 leaves support 2026-09-30 | That date | No Environment item and no runtime pin exist here, so `nb_ingest_orders` moves when the default moves. Run the heartbeat after the switch; pin an Environment only if it breaks |
+| Branch out to an *existing* workspace as Contributor | Roadmap: shipped, public preview, Q3 2026 — Contributors can switch branches and branch out to existing workspaces with the setting enabled. Learn carries the switch-branch half as [Change Git branch with Contributor role](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process) (July 2026) | Already shipped | Weaker than it sounds for us: branch-out still needs a Git-connected *source* workspace, which no workspace here is. Relevant only alongside the delegated model above |
 | Workspace item Bulk Import/Export APIs | [Fabric CI/CD announcement](https://community.fabric.microsoft.com/blog/fbc_fabricupdatesblogs/new-cicd-resources-for-microsoft-fabric-from-concepts-to-end-to-end-automation/5358502) (Mar 2026) | GA | Evaluate as a definitions backup/restore mechanism for the README's system-of-record caveat — Microsoft still recommends fabric-cicd for deployment |
 
-Two facts worth keeping alongside that table, because they close questions rather
-than open them. **Activator has no service-principal support**, so an event-driven
-orchestration built on it could never be deployed by this repository's CI identity.
-And the **Fabric dbt job** keeps its project in OneLake rather than in the item
-definition, its warehouse adapter accepts only Entra OAuth rather than service
-principals, and it has no build caching — three independent reasons dbt stays in
-GitHub Actions. Neither is a matter of taste; both are documented platform limits.
+One fact worth keeping alongside that table, because it closes a question rather
+than opening one. The **Fabric dbt job** keeps its project in OneLake rather than in
+the item definition, its warehouse adapter accepts only Entra OAuth rather than
+service principals, and it has no build caching — three independent reasons dbt stays
+in GitHub Actions. That is not a matter of taste; all three are documented limits.
 
-Two unresolved contradictions in Microsoft's own docs, recorded rather than guessed at.
-The Azure DevOps automation guide describes service-principal Git connection as
-supported, while another page states plainly that *"service principals are not supported
-for Git APIs"* — everything this repository has run against those APIs used a user
-identity, so it is untested here. And CI/CD support for the SQL analytics endpoint was
-announced as preview in June 2026, while later-dated warehouse docs still say version
-control for it "isn't currently available" and that deployment pipelines don't support
-the item. Verify in-tenant before designing around either.
+**A correction to an earlier note here: Activator's service-principal support is not
+settled, and the claim that it has none came from the weaker source.** The swagger spec
+and Activator's own REST reference page both answer Yes; only the
+[item-type matrix](https://learn.microsoft.com/rest/api/fabric/articles/item-management/item-management-overview),
+last dated 2025-03-25, says otherwise — and it disagrees with the reference pages on
+Mirrored Database and Mirrored Azure Databricks Catalog too. Event-driven orchestration
+on Activator is therefore an open option, not a closed one, and worth a live test before
+either claim goes in a public document.
+
+**The Git-API contradiction is resolved, against the page that stated it most plainly.**
+The warehouse page claiming *"service principals are not supported for Git APIs"* is the
+outlier: the swagger specs that generate Learn's identity tables mark Git Connect, Commit
+To Git and Update From Git as *conditionally* supported — the condition being that every
+item in the operation supports service principals — and Initialize Connection, Get Status
+and Disconnect as supported outright. Two dedicated Learn how-to pages walk through
+connecting a workspace as a service principal. The same stale page is wrong in the other
+direction as well, since Deploy Stage Content is conditional rather than unrestricted.
+Nothing here has been run against those APIs as a service principal, so this repository
+still has no first-hand measurement — but the design should not be shaped around a
+prohibition that the machine-readable source denies.
+
+One contradiction stays open. CI/CD support for the SQL analytics endpoint was announced
+as preview in June 2026, while later-dated warehouse docs say version control for it
+"isn't currently available", deployment pipelines "don't support" the item, the roadmap
+carries the work as planned for Q4 2026, and it appears in neither supported-items list.
+Four first-party sources, three of them against. Verify in-tenant before designing
+around it.
+
+**Where roadmap dates come from.** Microsoft retired `learn.microsoft.com/fabric/release-plan/*`
+— every URL now redirects to [roadmap.fabric.microsoft.com](https://roadmap.fabric.microsoft.com),
+which renders client-side and has no per-feature links, so a roadmap claim can only be
+cited to a product page. It carries two orthogonal fields, `ReleaseType` (public preview
+or GA) and `ReleaseStatus` (planned or shipped), which is why "Q3 2026 preview" in the
+rows above does not mean shipped. Several Q3 2026 items still read *planned* with the
+quarter almost over.
 
 A precision worth keeping about variable libraries: an item-reference variable *value*
 holds a workspace ID and an item ID, so it can point across workspaces — but the library

@@ -16,6 +16,55 @@ built bundle behind approval gates, recorded as GitHub Deployments. Branches are
 work in progress; environments are for released bundles. A hotfix takes the same
 path, just faster.
 
+## The three workspaces
+
+Every solution gets `ws-<solution>-dev`, `-test` and `-prod`, created by one Terraform
+module iterating over the three names. They are identical by construction: the same
+capacity, the same roles, the same items published from the same bundle. What differs is
+never the workspace itself but what has happened to the bundle inside it — how it
+arrived, who approved it, and what runs there on a timer.
+
+| | dev | test | prod |
+|---|---|---|---|
+| A bundle arrives | automatically, on every merge to `main` | by the promote workflow | by the promote workflow, after test |
+| Approval | none | a reviewer on `<solution>-test` | a reviewer on `<solution>-prod` |
+| Schedules | off | off | on |
+| Operated nightly | no | no | yes, at the promoted commit |
+
+**dev is the first cloud proof, and the gate.** The build deploys there unattended in the
+same run that produced the bundle, so a merge is answered within minutes by a real
+publish, a real `dbt build`, and its tests against real Fabric. Promotion then refuses any
+bundle whose dev deploy is not green — `promote` reads that job's conclusion before it
+will move anything. Unlike the `dev` of a deployment pipeline, it is not where
+anyone authors: it holds what the last merge produced and nothing else.
+
+**test is the same bytes in a workspace that did not build them.** Nothing is rebuilt: the
+promote workflow downloads the artefact from the original build run. That proves the part
+a single environment cannot — that everything environment-specific resolves somewhere
+else too. The semantic model's endpoint and warehouse ID, finance's shortcut into sales'
+gold, the variable library's value set, the warehouse connection `deploy.py` resolves at
+run time: each is rebound per environment, and a value that is hard-coded but happens to
+be right in dev is wrong in test and fails there. It is also the first gate a human
+stands at.
+
+**prod is the served estate, and the only one that runs on its own.** The ingestion
+schedule ships disabled and `parameter.yml` flips it true for prod alone, so the notebook
+runs on a timer in one workspace out of three. The nightly heartbeat operates prod at the
+commit the Deployments ledger says was promoted there, not at `main`, so a merge cannot
+reach production by way of the schedule. Rollback is the promote workflow pointed at an
+earlier build run.
+
+Three simplifications an adopter should expect to change:
+
+- **One capacity carries all three.** Environments are separated by identity and
+  approval, not by compute — a heavy dev job competes with production for the same F2.
+- **One viewers group covers all three.** `grp-<solution>-viewers` holds Viewer on every
+  workspace, which suits a team that develops against dev and consumes prod. An estate
+  whose production audience is wider than its team splits that group per environment.
+- **Every environment holds the same sample data.** Each deploy seeds the same committed
+  bytes, standing in for a real solution's per-environment ingestion — so test proves the
+  release mechanics and the marts' tests, not behaviour at production volume.
+
 ## Two ways to author, one source of truth
 
 Every change ships the same way: as a commit. There are two ways to author one, and they
