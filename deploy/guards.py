@@ -27,6 +27,19 @@ BANNED_NAMES = {"localSettings.json", "cache.abf", "notebook-settings.json"}
 # Local tool artifacts: git-ignored, but present on developer machines — skipped.
 LOCAL_ARTIFACTS = {"target", "logs", "dbt_packages", "__pycache__", ".user.yml"}
 
+# Item types fabric-cicd will happily deploy but whose APIs refuse a service
+# principal, so a deploy running as a managed identity fails at publish time with
+# nothing catching it first. Derived from the identity tables that every operation
+# in microsoft/fabric-rest-api-specs carries, filtered to the types fabric-cicd
+# accepts. Reflex is deliberately absent: the stale item-type matrix says it is
+# unsupported, and a live probe creating one as a deploy identity says otherwise.
+# Re-check with the verify-claims workflow before trusting this list against a
+# newer Fabric release.
+SERVICE_PRINCIPAL_REFUSED = {
+    "MLExperiment": "the whole MLExperiment CRUD surface answers No to service principals",
+    "UserDataFunction": "the whole User Data Functions CRUD surface answers No to service principals",
+}
+
 
 def solutions(root: pathlib.Path):
     return sorted(d for d in root.iterdir() if d.is_dir() and d.name != "_template")
@@ -214,9 +227,28 @@ def read_platform(p: pathlib.Path, out: list[str]) -> dict | None:
     return d
 
 
+def guard_service_principal_types(root: pathlib.Path) -> list[str]:
+    """No item whose API refuses the identity that deploys it."""
+    out = []
+    for sol in solutions(root):
+        for platform in sorted((sol / "fabric").rglob(".platform")):
+            try:
+                meta = json.loads(platform.read_text()).get("metadata", {})
+            except json.JSONDecodeError:
+                continue  # guard_platform_names reports malformed files
+            why = SERVICE_PRINCIPAL_REFUSED.get(meta.get("type", ""))
+            if why:
+                out.append(
+                    f"{sol.name}: {platform.parent.name} is a {meta['type']}, which cannot be "
+                    f"deployed by this repository's identity model — {why}. Deploys run as "
+                    f"mi-deploy-{sol.name}, so this would fail at publish time"
+                )
+    return out
+
+
 GUARDS = [guard_unclaimed, guard_logical_ids, guard_platform_names,
           guard_foreign_guids, guard_format_lock, guard_contract_targets,
-          guard_parameter_targets]
+          guard_parameter_targets, guard_service_principal_types]
 
 
 def run(root: pathlib.Path) -> list[str]:

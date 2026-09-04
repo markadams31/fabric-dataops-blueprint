@@ -112,6 +112,7 @@ Microsoft's own closing note is worth repeating: many organisations take a hybri
 | **Repository guards at pull-request time** | Rely on deploy-time failure | Catches silent classes — a renamed mart that freezes a consumer's data fails no deploy | Code to maintain that Microsoft does not supply |
 | **Shared capacity, one Terraform state** | A capacity and a configuration per environment, [as Microsoft recommends](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd) | Cost, for a demonstration | No noisy-neighbour isolation, and a wider blast radius on a bad apply |
 
-Terminology, mapped once: what this repository calls a **solution** is the guidance's
-*Fabric CI/CD project*; **promote** is its *release process*; the **bundle** is this
-repository's own addition, which the guidance's release options do not have.
+Terminology maps onto the guidance like this: what this repository calls a **solution** is
+its *Fabric CI/CD project*, **promote** is its *release process*, and the **bundle** is this
+repository's own addition, which the guidance's release options do not have. The local
+meanings are defined in [the path to production](path-to-production.md#the-words-once).
