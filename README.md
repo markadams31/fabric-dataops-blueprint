@@ -113,7 +113,7 @@ solutions/    one folder per solution: Fabric item definitions, dbt project, dep
   sales/      the worked example
   finance/    a second solution, reading sales' gold tables through a OneLake shortcut contract
 .github/      CI — one workflow per concern: validate pull requests, build and deploy, platform Terraform
-docs/         quickstart · the path to production · the tooling and the choices · branched workspaces
+docs/         quickstart · the path to production · the tooling and the choices · authoring in the portal
 samples/      synthetic retail data that the whole repository teaches from
 ```
 
