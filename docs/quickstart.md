@@ -111,7 +111,7 @@ Then prove the plumbing end to end: run the **verify-oidc** workflow (Actions �
 verify-oidc). It logs in as the platform identity and acquires a Fabric token —
 if it is green, every later workflow can authenticate. Two fork notes: GitHub
 leaves workflows disabled on a fresh fork until you enable them in the Actions
-tab, and scheduled workflows (the nightly pause, the production heartbeat) stay
+tab, and scheduled workflows (the nightly pause, and the production heartbeat — the scheduled run that rebuilds and tests production) stay
 off until the fork has its own commit activity.
 
 ## 6. Create your first solution

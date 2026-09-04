@@ -10,7 +10,7 @@ The beneficial implications that flow from this core foundation include:
 - **Consistency.** Every environment is built from the same source.
 - **Traceability.** The pull request records who changed what, the reasoning, and who approved it.
 - **Reliability.** Changes are tested before reaching production.
-- **Scalability.** Adding a team's solution is configuration, not a project. The fiftieth runs with the same pipelines, checks, and tests as the first.
+- **Scalability.** Adding a team's **solution** — one team's product, with its own workspaces, identity and approvers — is configuration, not a project. The fiftieth runs with the same pipelines, checks, and tests as the first.
 
 This design is intended for large enterprises that want to manage a data estate at scale with confidence.
 
@@ -65,7 +65,7 @@ tested in transit, whoever promotes to production can also edit it, and item cov
 visible in Git, but environments *become* branches: a change travels between them as cherry-picks, drift between
 environments returns, and no single tested artefact moves through the stages.
 
-**API-driven** — build once from `main`, deploy the same immutable bundle to every environment with
+**API-driven** — build once from `main`, then deploy the same immutable **build artefact** to every environment. This repository calls that artefact a **bundle**, and deploys it with
 [fabric-cicd](https://github.com/microsoft/fabric-cicd). The source of truth is the repository, changes are tested
 in transit, and environments are byte-identical by construction. It is the highest-effort option; paying that cost
 well is what the rest of this repository demonstrates.
@@ -81,7 +81,7 @@ solutions exchange data only through OneLake shortcuts.
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
 | Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
-| People | The team holds Viewer on its shared workspaces and authors locally or in a feature workspace of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
+| People | The team holds Viewer on its shared workspaces and authors locally or in a **feature workspace** — Microsoft's term for a developer's own workspace connected to their own branch — of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
 ```mermaid
 flowchart TB
@@ -171,7 +171,7 @@ platform/     Terraform — capacities and the solution module: workspaces, role
 solutions/    one folder per solution: Fabric item definitions, dbt project, deploy config
   _template/  what a new solution starts from
   sales/      the worked example
-  finance/    a second solution, reading sales' gold tables through a OneLake shortcut contract
+  finance/    a second solution, reading sales' gold tables through a data contract (a OneLake shortcut)
 .github/      CI — one workflow per concern: validate pull requests, build and deploy, platform Terraform
 docs/         quickstart · the path to production · the tooling and the choices · authoring in the portal
 samples/      synthetic retail data that the whole repository teaches from
@@ -185,7 +185,7 @@ Validate and build are cloud-free by construction — that is what makes a pull 
 ```bash
 uv sync                                        # pinned toolchain
 uv run pytest -q                               # the guards' failing fixtures
-uv run python deploy/guards.py                 # the repository guards
+uv run python deploy/guards.py                 # the repository guards: pull-request checks
 uv run python deploy/build.py --solution sales --sha demo
 ```
 
