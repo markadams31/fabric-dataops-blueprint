@@ -208,7 +208,7 @@ draft space, not an environment: nothing in it is a source of truth, and anythin
 keeping is already in the branch. Commit before you delete — items never committed are
 simply gone. A deleted workspace is restorable for 30 days if you go too early.
 
-An idle workspace does not burn capacity units on its own, so this is about clutter and
+Deleting is about clutter and
 governance rather than cost: every one is another place someone can mistake a draft for
 something real, and another entry an admin has to reason about.
 
