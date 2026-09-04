@@ -114,6 +114,16 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **Contract IDs resolve at deploy time (09-04, verified live):** the six GUIDs
+  `solutions/finance/fabric/parameter.yml` used to carry are gone. `deploy.py`
+  reads the producer from the shortcut's own `<PRODUCER>_WORKSPACE_ID` placeholder,
+  resolves `ws-<producer>-<env>` and its warehouse, and exports `$ENV:` variables
+  that fabric-cicd substitutes (needs the `enable_environment_variable_replacement`
+  feature flag). Confirmed by reading the deployed shortcut in `ws-finance-dev`:
+  it points at ws-sales-dev and `wh_analytics` by real ID. The repository now holds
+  no tenant identifier of any kind — a scan for GUIDs, tenant names, subscriptions,
+  regions, capacities and resource groups is clean, and `.user.yml` is gitignored
+  rather than committed.
 - **Four flip-prone claims probed as the deploy identity (09-04, `verify-claims`):**
   every claim in this repository that had reversed was one a documentation page
   alone supported, so the four most load-bearing were called against the API.
