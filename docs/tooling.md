@@ -39,7 +39,7 @@ words mean different things depending on which tool you picked:
 | | Deployment pipelines | Git integration | API-driven (this repo) |
 |---|---|---|---|
 | Item content | carried | carried | carried |
-| Schedules | carried | carried (`.schedules`) | **you** ([Job Scheduler API](https://learn.microsoft.com/fabric/fundamentals/job-scheduler)) |
+| Schedules | carried | carried (`.schedules`) | carried — see below |
 | Same-workspace item references | [auto-bound](https://learn.microsoft.com/fabric/cicd/cross-workspace-dependency-binding) | auto-bound | auto-bound |
 | Cross-workspace references | deployment rules | **you** | **you** (`parameter.yml`) |
 | Workspaces, roles, capacity | not carried | not carried | **you** (Terraform) |
@@ -47,6 +47,15 @@ words mean different things depending on which tool you picked:
 
 Nothing here is a defect. It is the trade every team makes: the more the platform
 carries, the less you control.
+
+**One row is measured rather than documented.** Microsoft's
+[job scheduler page](https://learn.microsoft.com/fabric/fundamentals/job-scheduler)
+says that on the public API you manage schedules by code, which reads as though
+schedules do not travel with a definition. They do: a `.schedules` file in the item
+folder is published by fabric-cicd as a definition part and Fabric applies it —
+verified here against a notebook, including varying `enabled` per environment through
+`parameter.yml`. This repository relies on that behaviour, so it is worth re-checking
+after a library upgrade.
 
 ## Choosing
 
@@ -79,11 +88,11 @@ Four questions decide which option is yours. They are about requirements, not to
 4. **How many teams?** One team with a handful of reports has no scaling problem and
    should not build one. This machinery pays off when solutions and reviewers multiply.
 
-A rough rule: **portal-first, report-centric, one team → Option 3. Repository-first,
-tested, multi-team → Option 2.** Option 1 sits between them, and its cost is that each
-stage gets its own long-lived branch, so changes move by cherry-pick and environments
-drift apart. Microsoft's own closing note is worth repeating: many organisations take a
-hybrid approach, and you are not obliged to pick exactly one.
+A rough rule: 
+- Portal-first, report-centric, one team → **Option 3**. 
+- Repository-first, tested, multi-team → **Option 2**.
+- **Option 1** sits between them, and its cost is that each stage gets its own long-lived branch, so changes move by cherry-pick and environments drift apart. 
+Microsoft's own closing note is worth repeating: many organisations take a hybrid approach, and you are not obliged to pick exactly one.
 
 ## What this repository chose
 
@@ -95,7 +104,7 @@ hybrid approach, and you are not obliged to pick exactly one.
 | **No workspace is connected to Git** | Option 2 connects `dev` to Git for authoring; only `test` and `prod` are disconnected | Every environment is built by identical machinery, so `dev` cannot drift from the repository | Fabric's *branch out to workspace* has no Git-connected workspace to branch from, so developers connect one themselves |
 | **Managed identities with OIDC** | Service principal with a client secret | No secret exists to leak, rotate or forget | Federated subjects are fiddly, and some APIs still refuse service principals |
 | **`parameter.yml` and a variable library** | A variable library alone | Semantic-model TMDL cannot read a library, and `notebookutils.variableLibrary` has no service-principal support | Two mechanisms to learn instead of one |
-| **`schedules.yml` applied through the Job Scheduler API** | An external cron only; `.schedules` under Git sync | The trigger is versioned beside the item and promoted with it | Our file format, not Microsoft's; Fabric auto-disables a scheduler after roughly ten consecutive failures |
+| **Schedules in the item's own `.schedules` file** | A custom declaration applied through the Job Scheduler API, which is what this repository did first | Fabric's own format, which it both writes and reads, published with the definition; per-environment `enabled` is a `parameter.yml` rewrite | Undocumented on this path, so it rests on a measured result; and Fabric auto-disables a scheduler after roughly ten consecutive failures |
 | **dbt in GitHub Actions** | The dbt job item; notebooks; pipelines | Tests, lineage, and validation that needs no cloud | Fabric emits no job event when the marts are rebuilt, so event-driven orchestration is unavailable |
 | **Repository guards at pull-request time** | Rely on deploy-time failure | Catches silent classes — a renamed mart that freezes a consumer's data fails no deploy | Code to maintain that Microsoft does not supply |
 | **Shared capacity, one Terraform state** | A capacity and a configuration per environment, [as Microsoft recommends](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd) | Cost, for a demonstration | No noisy-neighbour isolation, and a wider blast radius on a bad apply |
@@ -103,29 +112,3 @@ hybrid approach, and you are not obliged to pick exactly one.
 Terminology, mapped once: what this repository calls a **solution** is the guidance's
 *Fabric CI/CD project*; **promote** is its *release process*; the **bundle** is this
 repository's own addition, which the guidance's release options do not have.
-
-## Deliberately not used
-
-- **Deployment pipelines** — the source of truth becomes the dev workspace, nothing is
-  tested in transit, deployments are linear and need their own permissions to create and
-  manage, and item coverage is [partial](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/understand-the-deployment-process#considerations-and-limitations).
-- **Git synchronisation as the release** — makes environments equal to branches.
-- **[Apache Airflow job](https://learn.microsoft.com/fabric/data-factory/cicd-apache-airflow-jobs)** —
-  its Fabric connection needs a client secret and its CI/CD is preview and does not
-  support secrets. Both break the no-secrets rule this repository is built on.
-- **[Activator](https://learn.microsoft.com/fabric/real-time-hub/tutorial-orchestrate-jobs-with-job-events)** —
-  the right idea, and where Fabric is heading. It reacts to *Fabric* job events, and the
-  job that matters here (dbt) runs outside Fabric, so the event never fires.
-
-## When to revisit
-
-- **The dbt job item carries its project in its definition.** Today the definition holds
-  configuration and the project lives at a OneLake path. When that changes, transformation
-  can move inside Fabric, and event-driven orchestration becomes available with it.
-- **[Item reference variables](https://learn.microsoft.com/fabric/cicd/variable-library/item-reference-variable-type)
-  leave preview and bind across workspaces.** They currently store the same raw
-  workspace and item GUIDs per value set that `parameter.yml` does, so they would move
-  the problem rather than solve it.
-- **Activator rules become writable by hand.** Their definition is a GUID-wired entity
-  graph whose logic is a JSON string inside JSON, and Microsoft's advice is to author in
-  the portal and export. That is the opposite of this repository's premise.
