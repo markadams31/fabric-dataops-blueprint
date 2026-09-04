@@ -3,7 +3,7 @@
 Every change takes the same path: authored on a feature branch, reviewed in a pull
 request, merged after approval, built once, and deployed by machinery. This document
 shows that path in two views — how work reaches the repository (Microsoft's
-*development process*), and how the repository reaches a workspace (its *release
+*development process*) and how the repository reaches a workspace (its *release
 process*).
 
 ## The words, once
@@ -48,10 +48,10 @@ a deployment pipeline, it holds what the last merge produced and nothing else.
 **test** takes the same bytes, into a workspace that did not build them. That is the only
 way to find out whether the values that differ per environment actually rebind — the
 semantic model's endpoint, the shortcut into another solution's gold, the value set, the
-connection string. An ID that is hard-coded but right in dev is wrong here, and fails
+connection string. An ID that is hard-coded but right in dev is wrong here and fails
 here. It is also the first gate a human stands at.
 
-**prod** is the only workspace with a live schedule, and the only one the nightly run
+**prod** is the only workspace with a live schedule and the only one the nightly run
 touches. That run operates the commit prod was promoted at, not `main`, so merging cannot
 reach production behind the approvals. Rollback is promote pointed at an older build.
 
@@ -174,5 +174,5 @@ demonstration and a poor one for production.
 
 Every choice above — an API-driven release, a bundle, Terraform for access, dbt
 outside Fabric — had alternatives, and each cost something. Those decisions, the
-tools available, and where this repository departs from Microsoft's guidance are
+tools available and where this repository departs from Microsoft's guidance are
 set out in [the tooling and choices page](tooling.md).

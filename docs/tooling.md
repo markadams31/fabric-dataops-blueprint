@@ -6,7 +6,7 @@ for the landscape, and [CI/CD concepts and best practices](https://learn.microso
 for the reasoning in depth.
 
 This page covers what those pages leave to you: which tool to pick, what each one
-carries, and which trade-offs this repository accepted.
+carries and which trade-offs this repository accepted.
 
 ## What's available
 
@@ -26,7 +26,7 @@ carries, and which trade-offs this repository accepted.
 
 ## What the platform carries, and what you carry
 
-This is the single most useful thing to understand, and the source of most confusion.
+This is the single most useful thing to understand and the source of most confusion.
 **An item definition is the item's content, not everything about the item.**
 
 ```mermaid

@@ -44,7 +44,7 @@ the Git connection itself.
 | A [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with **Contents: read and write** on this repository | Fabric's GitHub connector authenticates with a token, not with your Microsoft sign-in. This is the one secret the design sanctions, it is yours alone, and a short expiry is fine |
 | Capacity headroom | A workspace needs a capacity, and this demo's is paused most of the time — resume it first |
 
-That first row is a real ask, and worth naming as one. It is two grants, not one — the
+That first row is a real ask and worth naming as one. It is two grants, not one — the
 tenant's *Users can create workspaces* setting, and capacity contributor so the workspace
 can sit on the shared capacity — and neither can be narrowed to "may create a feature
 workspace for a solution I work on". A developer who has them can create and delete
@@ -235,7 +235,7 @@ Measured consequences: the semantic model's editor refuses to open, and opening 
 gives *"Couldn't load the model schema associated with this report."* The report editor still
 works, so layout can be changed and committed; nothing data-bound can be.
 
-This is not a defect to fix, it is what parameterisation means — the values are per
+This is not a defect to fix; it is what parameterisation means — the values are per
 environment, and a feature workspace is not one of them. It does decide what the portal is
 good for here: **drafting a report's layout, and running a notebook.** Anything that needs to
 resolve a connection needs a deployed workspace, which means `ws-<solution>-dev` after a merge.

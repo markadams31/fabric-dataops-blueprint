@@ -1,6 +1,6 @@
 # Authoring locally, in a copy of the repository
 
-This is the default path, and the one that needs nothing provisioned: clone the repository,
+This is the default path and the one that needs nothing provisioned: clone the repository,
 edit files, open a pull request. Microsoft's guidance says the same —
 [developers using a client tool](https://learn.microsoft.com/fabric/cicd/best-practices-cicd)
 *"don't necessarily need a workspace… A workspace is needed only as a testing environment."*
@@ -46,7 +46,7 @@ the execution somewhere that has compute.
 ### Which items are worth authoring where
 
 The previous table is about compute. This one is about where a change should *start*, which
-is decided by two things: what happens to an item when the portal writes it back, and whether
+is decided by two things: what happens to an item when the portal writes it back and whether
 a tool outside Fabric can open it at all.
 
 Microsoft's rule is the one to begin from — *"if the items you're developing are available in
