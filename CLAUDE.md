@@ -37,7 +37,9 @@ lives in README.md and docs/ — nothing here is needed to *use* the blueprint.
 - `executeQueries` is 401 for every service-principal type in this tenant with
   every documented switch satisfied; smoke tests are dbt singular tests instead.
 - Workspace Viewer does not confer OneLake read: the cross-solution contract
-  grant is Contributor — a documented over-grant with a watch-list entry below.
+  grant is Contributor — a documented over-grant. Both narrower alternatives were
+  tried and are closed (see the evidence register); it is the minimum grant that
+  both reaches OneLake and can be declared in Terraform.
 
 ## Operating notes
 
@@ -103,6 +105,18 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **The Contributor over-grant cannot currently be narrowed (09-04):** the
+  cross-solution contract shortcuts finance's lakehouse at sales' *warehouse*, and
+  both obvious replacements are closed. `GET .../items/<warehouse>/dataAccessRoles`
+  returns HTTP 400 `UniversalSecurityFeatureDisabledForArtifactType`; the same call
+  against the lakehouse returns 200 with its `DefaultReader` role, which is the
+  control that makes the negative meaningful. OneLake security roles list Lakehouse,
+  Azure Databricks mirrored catalog, mirrored databases and mirrored catalogs — no
+  Warehouse. Item-level `ReadAll` would be exactly the right permission ("read
+  warehouse data through OneLake APIs and Spark") but warehouse sharing is UI-only
+  and Microsoft states plainly that sharing a warehouse with a service principal is
+  not supported. The watch-list row that said *adopt* was wrong for this shape and
+  now says so; delegated shortcuts are the replacement to wait for.
 - **The GitHub provider setting needs the developers too (09-04):** connecting a
   branched workspace to a branch fails with `FeatureNotAvailable` — "the tenant
   administrator has not enabled the specified Git provider type" — unless the
@@ -168,7 +182,7 @@ versions.
 | Full-Lakehouse / Warehouse-schema deployment | fabric-cicd feature requests | Ships | **Do not adopt blindly** — would overlap dbt's ownership of the warehouse (one owner per store) |
 | `deploy_with_config` | [config-based deployment](https://microsoft.github.io/fabric-cicd/latest/how_to/config_deployment/) | When orphan control / per-environment publish differences land here | Candidate replacement for the publish block in `deploy.py` |
 | `executeQueries` for service principals | Power BI REST API | **Re-test before assuming a wall**: this is a *Power BI* API needing the `analysis.windows.net/powerbi/api` audience and the *Power BI* SP switch — a different setting from the Fabric one we enumerated. Documented fallback if it still fails: query the SQL analytics endpoint with Entra auth, where SP support is explicit | Reinstate a DAX smoke against the semantic model |
-| Finer-grained OneLake read | **Already shipped — GA May 2026.** [OneLake security roles](https://learn.microsoft.com/fabric/onelake/security/get-started-security) grant data access to workspace *Viewers*; `PUT /v1/workspaces/{ws}/items/{item}/dataAccessRoles` supports SP and MI with `dryRun`. [Delegated shortcuts](https://learn.microsoft.com/fabric/onelake/onelake-shortcut-security) go further — a fixed connection identity means the consumer needs no grant at all | **Adopt** | Replace the Contributor over-grant on the cross-solution contract |
+| Finer-grained OneLake read | **Tried and blocked, measured 2026-09-04.** OneLake security roles are GA but [support only Lakehouse, mirrored databases and mirrored catalogs](https://learn.microsoft.com/fabric/onelake/security/data-access-control-model#permissions-and-supported-items) — not Warehouse, which is what our contract shortcut targets. Item-level sharing is closed as well: warehouse sharing is [UI-only and not supported for service principals](https://learn.microsoft.com/fabric/data-warehouse/share-warehouse-manage-permissions#limitations) | Warehouse becomes a supported item type, **or** [delegated shortcuts](https://learn.microsoft.com/fabric/onelake/shortcuts/create-onelake-shortcut) leave preview | Delegated shortcuts are the real replacement — a fixed identity on the shortcut means the consumer needs no grant on the producer at all. Until then Contributor stays, and the reason is now recorded in `solutions.tf` rather than implied |
 | PBIR becomes the enforced report format | Fabric release notes | GA (announced Q3 2026) | Format already used here; confirm nothing breaks |
 | Fabric Git integration read-write requirement | [Git limitations](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations) | 2026-12-01 | Verify branched-workspace flow for Viewer-only users |
 | Warehouse definition REST API | Fabric roadmap — "Create, Get, Update warehouse definition REST API", target Q3 2026, GA: *provision a warehouse initialised from a definition payload supporting Dacpac and SQL project* | Ships | **Do not adopt blindly** — it would make fabric-cicd a second owner of warehouse schema, which dbt owns. Relevant only if dbt ever leaves |
