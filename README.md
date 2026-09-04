@@ -113,7 +113,7 @@ solutions/    one folder per solution: Fabric item definitions, dbt project, dep
   sales/      the worked example
   finance/    a second solution, reading sales' gold tables through a OneLake shortcut contract
 .github/      CI — one workflow per concern: validate pull requests, build and deploy, platform Terraform
-docs/         quickstart · the path to production · the tooling and the choices
+docs/         quickstart · the path to production · the tooling and the choices · branched workspaces
 samples/      synthetic retail data that the whole repository teaches from
 ```
 
@@ -142,7 +142,8 @@ the `capacity` workflow is the resume button.
 
 Reading order: evaluating the design — this page, then [the path to production](docs/path-to-production.md)
 for how a change travels and [the tooling and choices](docs/tooling.md) for what else was possible and
-what each option costs; adopting it — [the quickstart](docs/quickstart.md); maintaining it — the
+what each option costs; adopting it — [the quickstart](docs/quickstart.md); authoring in the portal —
+[branched workspaces](docs/branched-workspaces.md); maintaining it — the
 maintainer notes in [CLAUDE.md](CLAUDE.md).
 
 MIT-licensed. One maintainer, best effort.

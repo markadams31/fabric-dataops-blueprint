@@ -35,7 +35,9 @@ Devs can create a
 [branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace) —
 a temporary, isolated workspace connected to a feature branch — and portal edits land
 in the repository like any other commit. When the pull request merges, the workspace
-is deleted. One practical note: because no shared workspace here is Git-connected,
+is deleted — the lifecycle, step by step and with screenshots, is in
+[working in a branched workspace](branched-workspaces.md). One practical note:
+because no shared workspace here is Git-connected,
 the portal's *branch out* button has nowhere to appear — creating one is instead
 create workspace → Workspace settings → Git integration → connect to your branch,
 which yields the identical result.

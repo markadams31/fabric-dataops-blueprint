@@ -18,9 +18,9 @@ find_replace:
     # Whether the ingestion schedule is live. Fabric's own .schedules file is one
     # file for every environment, so which environments actually run it is a
     # definition-level rewrite like any other.
-    - find_value: '"SCHEDULE_ENABLED"'
+    - find_value: '"enabled": false'
       replace_value:
-        dev: "false"
-        test: "false"
-        prod: "true"
+        dev: '"enabled": false'
+        test: '"enabled": false'
+        prod: '"enabled": true'
       file_path: "/nb_ingest_orders.Notebook/.schedules"
