@@ -43,8 +43,17 @@ lives in README.md and docs/ — nothing here is needed to *use* the blueprint.
 
 ## Operating notes
 
-- Nightly: production heartbeat 18:00 UTC (resume → ingest → dbt → issue on
-  failure); capacity pause 20:00 UTC. ~US$0.36/hour while Active — pause
+- Nightly: production heartbeat 18:00 UTC (resume → dbt → issue on failure);
+  capacity pause 20:00 UTC. **Ingestion is no longer triggered by the workflow** —
+  the notebook carries its own `.schedules`, enabled in prod by `parameter.yml`, and
+  Fabric runs it. `deploy/operate.py` existed only to push that notebook when the
+  schedule was disabled, so it was deleted on 2026-09-04 and `deploy/run_dbt.py`
+  does the half that remains. The design now assumes an always-on capacity even
+  though this demo pauses for cost, and that gap has a cost of its own: the
+  notebook's 18:00 schedule only fires if the resume has already landed, and Fabric
+  auto-disables a scheduler after roughly ten consecutive failures. On a real
+  always-on capacity neither applies. dbt does not wait on ingestion either way —
+  it reads the Bronze CSVs with OPENROWSET, not the notebook's Delta tables. ~US$0.36/hour while Active — pause
   whenever idle.
 - Single-maintainer demonstration repo: approvals are self-approvals, and the
   repository is disposable by design.
