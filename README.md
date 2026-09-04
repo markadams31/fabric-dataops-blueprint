@@ -43,8 +43,8 @@ well is what the rest of this repository demonstrates.
 
 ## The unit of work: a solution
 
-The repository's unit of work is what it calls a **solution** - one team's product with a `dev` → `test` → `prod` set of
-workspaces and one folder under `solutions/`. The platform hosts as many solutions as you need on shared capacity, and
+The repository's unit of work is what it calls a **solution** - one team's product with a [`dev` → `test` → `prod` set of
+workspaces](docs/path-to-production.md#the-three-workspaces) and one folder under `solutions/`. The platform hosts as many solutions as you need on shared capacity, and
 solutions exchange data only through OneLake shortcuts.
 
 | Layer | Per solution | Shared | Owned by |
