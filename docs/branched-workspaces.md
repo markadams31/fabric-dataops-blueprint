@@ -57,7 +57,17 @@ alternatives keep the developer experience and move the privilege into the platf
   fully declarative, and the workspaces exist whether or not anyone is using them.
 
 This repository takes the direct route because it is a demonstration with one maintainer.
-An enterprise should expect to pick one of the two above.
+An enterprise should expect to pick one of the two above — or wait: Microsoft has said it
+plans a **delegated model for branch-out**, so that people without workspace-creation or
+capacity-assignment rights can still branch out for themselves. That would remove this
+prerequisite entirely.
+
+One thing that would *not* help, despite appearances: connecting `ws-<solution>-dev` to Git
+so people could branch out from it. Branch-out requires Contributor on the source
+workspace — Viewers cannot even see Git information — so it would mean giving up the
+Viewer-only rule that keeps dev from drifting, it still needs the same rights to create the
+target workspace, and a workspace that fabric-cicd deploys into would sit permanently
+dirty, since a deploy registers as uncommitted changes.
 
 ## 1. Create the branch first
 
