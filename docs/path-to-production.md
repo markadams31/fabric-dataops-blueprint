@@ -14,7 +14,6 @@ which is where a reader usually stumbles.
 | Term | What it means here | Worth knowing |
 |---|---|---|
 | **Solution** | One team's product: a folder under `solutions/`, three workspaces, its own deploy identity and reviewers | Adding one is a folder copy; everything else derives from the name |
-| **Component** | A typed part of a solution. The directory name *is* the type — `fabric/`, `dbt/` | A new component is a folder; a new *type* is an implementation of the four phases |
 | **Bundle** | The immutable artefact built once from one commit: `<solution>-<sha>.tar.gz`, carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
 | **Build** | The phase that produces a bundle | `build-and-deploy.yml` does more than the phase it is named after: on every merge it builds *and* deploys to dev |
 | **Deploy** | Apply one bundle to one environment | Always the same mechanism, whichever environment |
@@ -77,16 +76,16 @@ Every change ships the same way: as a commit. Two documents cover how one gets w
 and [authoring in the portal](portal-authoring.md), for the work that wants a running
 workspace. The rest of this page is what happens after the commit.
 
-## How a component deploys
+## How a change deploys
 
-A solution is made of typed components — Fabric items, a dbt project, a Fabric SQL
-database — and every type moves through the same four phases. The phases are the
-contract; each type implements them its own way.
+A solution holds Fabric items and, when it transforms data, a dbt project. Both move
+through the same four phases. The phases are the shape of the pipeline; what happens
+inside them differs by what changed.
 
 ```mermaid
 flowchart LR
     subgraph CI ["Integrate — once per change"]
-        SRC["solutions/#60;name#62;/<br/>component source"] --> V["Validate<br/>pull request, no cloud"]
+        SRC["solutions/#60;name#62;/<br/>the source"] --> V["Validate<br/>pull request, no cloud"]
         V -->|"merge"| BLD["Build<br/>on main"]
         BLD --> BUN[("bundle<br/>#60;solution#62;-#60;sha#62;")]
     end

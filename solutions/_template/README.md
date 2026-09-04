@@ -5,15 +5,14 @@ That is the whole procedure: the platform derives everything else from the folde
 its three workspaces (`ws-<name>-dev/test/prod`), its deploy identity
 (`mi-deploy-<name>`) and its viewer group (`grp-<name>-viewers`).
 
-## Layout — the directory names are the component types
+## Layout — a solution holds two directories
 
-| Directory | Component type | Deployed by |
+| Directory | What it is | Deployed by |
 |---|---|---|
-| `fabric/` | Fabric items — every type fabric-cicd supports, one component | fabric-cicd, full scope |
+| `fabric/` | Fabric items — every type fabric-cicd supports | fabric-cicd, full scope |
 | `dbt/<project>/` | A dbt project (one per subdirectory) | `dbt build` |
 
-A new component type is one driver in `deploy/` plus its directory name — the
-contract is validate → build → deploy → verify.
+Both are optional: a solution that only reads another's marts needs no `dbt/`.
 
 Inside `fabric/`, items follow Fabric's own Git format: one folder per item, named
 `<display-name>.<ItemType>`. When copying an item folder to start a new item, give it
@@ -31,13 +30,12 @@ at promotion), it becomes an override file containing only that deviation.
 
 ## Naming conventions the tooling relies on
 
-Most names are yours. Three are not, because the pipeline finds items by them:
+Most names are yours. Two are not, because the pipeline finds items by them:
 
 | Name | Why |
 |---|---|
 | `lh_bronze` | Where sample data is seeded and dbt reads its raw files. Other lakehouses (`lh_curated`, …) are free-form. |
 | `wh_*` | The warehouse dbt builds into — exactly one per solution. |
-| `nb_ingest*` | Run by the production schedule. A notebook outside this prefix is never scheduled, and the schedule fails loudly rather than passing quietly. |
 
 ## Triggers
 

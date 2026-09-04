@@ -3,7 +3,7 @@
 usage: build.py --solution NAME --sha GITSHA [--out DIR]
 
 The bundle is the unit of deployment: the same bytes go to every environment.
-Components are the solution's directories (the directory name is the component
+A solution's directories say what it holds (the directory name is the
 type); anything unrecognised fails the build rather than silently not deploying.
 """
 
@@ -17,7 +17,7 @@ import tarfile
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from importlib.metadata import version
 
-from guards import KNOWN_COMPONENTS, KNOWN_FILES, LOCAL_ARTIFACTS  # single source of truth
+from guards import KNOWN_FILES, LOCAL_ARTIFACTS, SOLUTION_DIRECTORIES  # single source of truth
 
 
 def wanted(root: pathlib.Path, f: pathlib.Path) -> bool:
@@ -44,18 +44,18 @@ def main() -> None:
     if not src.is_dir():
         sys.exit(f"no such solution: {src}")
 
-    components = sorted(d.name for d in src.iterdir() if d.is_dir())
-    unknown = [c for c in components if c not in KNOWN_COMPONENTS]
+    directories = sorted(d.name for d in src.iterdir() if d.is_dir())
+    unknown = [c for c in directories if c not in SOLUTION_DIRECTORIES]
     stray = [f.name for f in src.iterdir() if f.is_file() and f.name not in KNOWN_FILES]
     if unknown or stray:
         sys.exit(f"unclaimed content in {src}: dirs={unknown} files={stray} "
-                 f"(component types: {sorted(KNOWN_COMPONENTS)})")
+                 f"(a solution holds: {sorted(SOLUTION_DIRECTORIES)})")
 
     manifest = {
         "solution": args.solution,
         "source_sha": args.sha,
         "content_digest": content_digest(src),
-        "components": components,
+        "directories": directories,
         "tools": {"python": sys.version.split()[0], "fabric-cicd": version("fabric-cicd")},
     }
 
@@ -66,7 +66,7 @@ def main() -> None:
         tar.add(src, arcname=".",
                 filter=lambda ti: None if set(pathlib.PurePath(ti.name).parts) & LOCAL_ARTIFACTS else ti)
     (out / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"built {bundle} digest={manifest['content_digest'][:16]}… components={components}")
+    print(f"built {bundle} digest={manifest['content_digest'][:16]}… holds={directories}")
 
 
 if __name__ == "__main__":
