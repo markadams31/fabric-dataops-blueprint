@@ -10,20 +10,25 @@ The rule that makes it safe: **writes go to your workspace, reads come from the 
 one.** Nobody can write to `ws-<solution>-dev` — the team holds Viewer there — so your
 workspace is where drafting happens, and a pull request is how it becomes real.
 
-## What Microsoft calls this, and how this repository differs
+## This is not a "branched workspace", and the difference matters
 
 Microsoft's [branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace)
-is a workspace **linked to a source workspace**. You create one with **Branch out to
+is a specific thing: a workspace **linked to a source workspace**. You create one with **Branch out to
 another workspace** from a Git-connected workspace's Source control pane: Fabric cuts a
 new branch from the source workspace's branch, creates the workspace, connects it, and
 syncs it — one command. The link it establishes is what gives you the parent in the
 workspace tree, breadcrumbs back to the source, and the **Related Branches** tab.
 
-**No workspace here is connected to Git.** `ws-<solution>-dev` is a deployment target
-like test and prod, which is a [deliberate choice with a cost](tooling.md#what-this-repository-chose),
-and this is the cost: there is no source workspace to branch out *from*, so the command
-does not appear. What follows is the manual equivalent — an isolated workspace on your own
-branch that round-trips through Git exactly the same way.
+**No workspace here is connected to Git**, so none of that is available. `ws-<solution>-dev`
+is a deployment target like test and prod, which is a
+[deliberate choice with a cost](tooling.md#what-this-repository-chose), and this is the
+cost: there is no source workspace to branch out *from*, so the command does not appear.
+
+What follows is the manual equivalent, and this document calls it a **feature workspace**
+to keep the two apart — a workspace you create yourself and connect to your own branch. It
+gives the same isolation and the same round trip through Git. It is not a branched
+workspace, and saying so matters: if you go looking for **Branch out** you will not find
+it, and the Related Branches tab will never appear.
 
 What you give up is the relationship, not the isolation: no parent in the workspace tree,
 no breadcrumbs, no Related Branches tab. If you want it later, Microsoft has a preview
@@ -41,7 +46,7 @@ the Git connection itself.
 
 That first row is a real ask, and worth naming as one. It is two grants, not one — the
 tenant's *Users can create workspaces* setting, and capacity contributor so the workspace
-can sit on the shared capacity — and neither can be narrowed to "may create a branched
+can sit on the shared capacity — and neither can be narrowed to "may create a feature
 workspace for a solution I work on". A developer who has them can create and delete
 workspaces anywhere in the tenant. Plenty of organisations will not agree to that, and
 they are not being unreasonable.
@@ -97,14 +102,14 @@ workspace, which you cannot do to *My workspace*.
 **Workspace settings → Git integration**. Choose GitHub, add your account with the token,
 then point it at the repository, your branch, and the solution's folder.
 
-![Git integration settings showing the repository, folder and branch](images/branched-workspace-git-settings.png)
+![Git integration settings showing the repository, folder and branch](images/feature-workspace-git-settings.png)
 
 Fabric then offers to fill the workspace from the branch — accept it. Only
 [Git-supported item types](https://learn.microsoft.com/fabric/cicd/git-integration/intro-to-git-integration#supported-items)
 arrive; anything else the solution deploys simply will not be there. Every item that did
 sync shows **Synced**, with the branch and last-synced commit along the bottom.
 
-![The workspace list with a Git status column and the branch in the footer](images/branched-workspace-synced.png)
+![The workspace list with a Git status column and the branch in the footer](images/feature-workspace-synced.png)
 
 ## 4. Work
 
@@ -116,7 +121,7 @@ Edit items in the portal as you normally would. Anything you touch flips to
 Open **Source control**, review what changed, write a message, and commit. This pushes
 straight to your feature branch.
 
-![The source control panel listing changed items with a commit message box](images/branched-workspace-changes.png)
+![The source control panel listing changed items with a commit message box](images/feature-workspace-changes.png)
 
 Expect noise alongside your real change. Fabric writes files without a trailing newline
 and rewrites line endings, so items you never opened can appear as modified — the
@@ -137,7 +142,7 @@ that: the repository did.
 
 ## Reuse it, rather than one per feature
 
-Creating a workspace per feature proliferates fast: three developers with two branches
+Creating a feature workspace per branch proliferates fast: three developers with two branches
 each is six workspaces, and every one needs creating, connecting and syncing. Fabric
 supports the alternative — keep the workspace and move it between branches with **Switch
 branch** in the Source control pane.
@@ -185,4 +190,4 @@ Until the warehouse is created by Terraform rather than shipped in the bundle, c
 your workspace to a branch where that folder is absent.
 
 The measured detail behind this, and what else a round trip does to item definitions, is
-in [the path to production](path-to-production.md#what-a-branched-workspace-does-to-this-repository).
+in [the path to production](path-to-production.md#what-a-git-connected-workspace-does-to-this-repository).
