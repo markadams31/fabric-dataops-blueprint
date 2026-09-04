@@ -50,9 +50,22 @@ solutions exchange data only through OneLake shortcuts.
 | Layer | Per solution | Shared | Owned by |
 |---|---|---|---|
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
-| Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
+| Data plane | Notebooks, semantic models and reports, and the dbt project that builds Silver and Gold — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
+| Stores — both planes at once | The Lakehouse (Bronze) and Warehouse (Silver and Gold). Their *existence* is control plane; the *schema inside them* is data plane | — | fabric-cicd creates the empty item; dbt owns everything in the warehouse |
 | Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
 | People | The team holds Viewer on its shared workspaces and authors locally or in a feature workspace of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
+
+That third row is the one worth pausing on, because it is where most Fabric designs get
+muddled. A lakehouse or a warehouse is a *container*: creating it is an infrastructure act,
+but what lives inside it is data. Splitting the two is what lets **one mechanism own each
+store** — fabric-cicd brings the warehouse into being from a folder holding nothing but a
+`.platform` file, and from that moment dbt owns every table in it. Terraform is deliberately
+not in that path: it creates workspaces and grants, not items.
+
+The cost is visible and worth knowing before you meet it. Because the warehouse folder
+carries no schema, Fabric's Git integration rejects it — and because Fabric would want to own
+that schema itself (as a DacFx database project) if it did, adopting warehouse Git
+integration would put a second owner on a store dbt already owns.
 
 Adding a solution is one folder copied from `solutions/_template` — everything else is derived from it.
 
