@@ -1,5 +1,5 @@
 # Deploy one solution's bundle to one environment, as that solution's own
-# identity. Reusable: build.yml calls it for dev, promotion will call it for
+# identity. Reusable: build-and-deploy.yml calls it for dev, promotion will call it for
 # test and prod with the identical bundle.
 name: deploy-env
 on:
@@ -52,10 +52,27 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
       - run: uv sync --frozen --no-dev
-      - name: deploy
+      - name: deploy the bundle
         run: |
           uv run python deploy/deploy.py \
             --bundle dist/${{ inputs.solution }}-*.tar.gz \
             --manifest dist/release-manifest.json \
+            --solution ${{ inputs.solution }} \
+            --environment ${{ inputs.environment }}
+
+      # Stands in for ingestion, and deliberately not part of the deploy above: a
+      # deploy rebuilds derived data, but writing *source* data from the release
+      # path means a redeploy can overwrite Bronze. A real solution deletes this
+      # step and lets its own ingestion fill the lakehouse.
+      - name: seed demo source data
+        run: |
+          uv run python deploy/seed.py \
+            --solution ${{ inputs.solution }} \
+            --environment ${{ inputs.environment }}
+
+      - name: build and test the marts
+        run: |
+          uv run python deploy/run_dbt.py \
+            --bundle dist/${{ inputs.solution }}-*.tar.gz \
             --solution ${{ inputs.solution }} \
             --environment ${{ inputs.environment }}

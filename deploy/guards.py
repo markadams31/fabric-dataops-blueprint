@@ -15,6 +15,8 @@ import sys
 
 import yaml
 
+from solutions import solutions
+
 # The project's scope: what fabric-cicd deploys, plus dbt as the
 # transformation engine. A new component type is one driver plus its name here.
 KNOWN_COMPONENTS = {"fabric", "dbt"}
@@ -41,8 +43,7 @@ SERVICE_PRINCIPAL_REFUSED = {
 }
 
 
-def solutions(root: pathlib.Path):
-    return sorted(d for d in root.iterdir() if d.is_dir() and d.name != "_template")
+
 
 
 def guard_unclaimed(root: pathlib.Path) -> list[str]:

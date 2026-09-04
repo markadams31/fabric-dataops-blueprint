@@ -1,0 +1,31 @@
+# Actions are pinned by commit SHA, which only helps if something moves them.
+# `github-setup.sh` turns on Dependabot's vulnerability alerts; this turns on the
+# version updates that actually open the pull requests.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: terraform
+    directory: /platform/terraform
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: tf
