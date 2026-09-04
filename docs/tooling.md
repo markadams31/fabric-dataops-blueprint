@@ -41,8 +41,8 @@ flowchart LR
         W["The workspace, its roles, its capacity<br/>Terraform"]
         G["Permissions and sensitivity labels<br/>no mechanism here — a documented gap"]
     end
-    DEF ==> ITEM(["One item, live in a workspace"])
-    ELSE --> ITEM
+    DEF -->|"published as one artefact"| ITEM["One item, live in a workspace"]
+    ELSE -->|"applied separately"| ITEM
     style DEF fill:#fff8e1,stroke:#f59e0b
     style ELSE fill:#eff6ff,stroke:#2563eb
 ```
