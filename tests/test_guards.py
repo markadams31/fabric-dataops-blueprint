@@ -207,3 +207,28 @@ def test_parameter_target_intact_is_allowed(tmp_path):
     (d / "definition" / "model.tmdl").write_text('database = Sql.Database("ENDPOINT", "ID")\n')
     parameter_yml(tmp_path, "s1", "ENDPOINT", "/sm.SemanticModel/definition/model.tmdl")
     assert guards.run(tmp_path) == []
+
+
+def test_service_principal_refused_type_is_caught(tmp_path):
+    """An item type whose API refuses service principals fails the pull request."""
+    sol = tmp_path / "sales"
+    (sol / "fabric" / "fn_helper.UserDataFunction").mkdir(parents=True)
+    (sol / "fabric" / "fn_helper.UserDataFunction" / ".platform").write_text(json.dumps({
+        "metadata": {"type": "UserDataFunction", "displayName": "fn_helper"},
+        "config": {"version": "2.0", "logicalId": "11111111-2222-3333-4444-555555555555"},
+    }))
+    out = guards.guard_service_principal_types(tmp_path)
+    assert len(out) == 1
+    assert "UserDataFunction" in out[0]
+    assert "mi-deploy-sales" in out[0]
+
+
+def test_deployable_types_pass_the_service_principal_guard(tmp_path):
+    """Reflex is deployable by a service principal — measured, despite the stale matrix."""
+    sol = tmp_path / "sales"
+    (sol / "fabric" / "act_alert.Reflex").mkdir(parents=True)
+    (sol / "fabric" / "act_alert.Reflex" / ".platform").write_text(json.dumps({
+        "metadata": {"type": "Reflex", "displayName": "act_alert"},
+        "config": {"version": "2.0", "logicalId": "66666666-7777-8888-9999-000000000000"},
+    }))
+    assert guards.guard_service_principal_types(tmp_path) == []

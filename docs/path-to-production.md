@@ -6,6 +6,25 @@ shows that path in two views — how work reaches the repository (Microsoft's
 *development process*), and how the repository reaches a workspace (its *release
 process*).
 
+## The words, once
+
+Most of this design rests on six terms, and three of them are also the names of workflows,
+which is where a reader usually stumbles.
+
+| Term | What it means here | Worth knowing |
+|---|---|---|
+| **Solution** | One team's product: a folder under `solutions/`, three workspaces, its own deploy identity and reviewers | Adding one is a folder copy; everything else derives from the name |
+| **Component** | A typed part of a solution. The directory name *is* the type — `fabric/`, `dbt/` | A new component is a folder; a new *type* is an implementation of the four phases |
+| **Bundle** | The immutable artefact built once from one commit: `<solution>-<sha>.tar.gz`, carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
+| **Build** | The phase that produces a bundle | `build.yml` does more than the phase it is named after: on every merge it builds *and* deploys to dev |
+| **Deploy** | Apply one bundle to one environment | Always the same mechanism, whichever environment |
+| **Promote** | Deploy a bundle that has *already* succeeded in dev to the next environment, rebuilding nothing | The difference from deploy is provenance, not mechanism — `promote.yml` refuses a bundle whose dev deploy did not succeed, and refuses anything that is not a build of `main` |
+
+**Release** is deliberately absent from that list. Microsoft uses it for the whole promotion
+process, and this repository borrows it in that sense only — there is no release stage, no
+release artefact and no release branch. The one local use is the bundle's
+`release-manifest.json`, which records what a bundle is rather than marking a stage.
+
 ## Branching
 
 The repository is trunk-based: one long-lived branch, `main`, and short-lived feature
