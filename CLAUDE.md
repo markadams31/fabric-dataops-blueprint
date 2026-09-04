@@ -103,6 +103,16 @@ round of live testing settled:
   code change, which is the extensibility claim holding up. What was not
   retested: two builds dispatched at once (the schedule-versus-promote
   collision was, and serialised correctly).
+- **Schedules as code (09-04):** an item's REST definition carries content only
+  (a DataPipeline's is `pipeline-content.json` + `.platform`), so fabric-cicd
+  cannot publish a schedule — it has no notion of them. `.schedules` is a Git
+  integration artefact, and fabric-cicd would upload any file in an item folder
+  as a definition part, so schedules live in `fabric/schedules.yml` beside
+  `parameter.yml` and are applied through the Job Scheduler API. Create and
+  update both verified live against `ws-sales-dev`; updates reuse the schedule
+  id rather than stacking duplicates. Fabric auto-disables a scheduler after
+  roughly ten consecutive failures, which is why they ship disabled while the
+  capacity pauses.
 - **Torture + clean-slate rebuild (09-03):** the whole platform was destroyed
   and rebuilt from nothing following the quickstart; both solutions promoted
   through prod. Traps that round found: tenant settings render **soft-deleted

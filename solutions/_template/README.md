@@ -38,3 +38,12 @@ Most names are yours. Three are not, because the pipeline finds items by them:
 | `lh_bronze` | Where sample data is seeded and dbt reads its raw files. Other lakehouses (`lh_curated`, …) are free-form. |
 | `wh_*` | The warehouse dbt builds into — exactly one per solution. |
 | `nb_ingest*` | Run by the production schedule. A notebook outside this prefix is never scheduled, and the schedule fails loudly rather than passing quietly. |
+
+## Triggers
+
+`fabric/schedules.yml` declares when items run. It is applied on every deploy
+through Fabric's Job Scheduler API — schedules are not part of an item
+definition, so they cannot ride along with the item on an API-driven release.
+Each entry names an item this solution ships, its job type, a cron
+configuration, and whether it is enabled per environment. A guard fails the
+pull request if a schedule names an item that no longer exists.
