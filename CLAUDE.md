@@ -111,7 +111,18 @@ round of live testing settled:
   covers the pipeline but locks out every human who would author in a branched
   workspace. The error names no setting, so this is minutes of confusion for an
   adopter.
-- **Portal round-trip fidelity (09-04):** `getDefinition` on our own deployed items
+- **Branched workspace, tested end to end (09-04):** PAT → Fabric connection →
+  `git/connect` → `initializeConnection` → `updateFromGit` → `commitToGit`, all by
+  API. Blockers found, in order: the GitHub tenant setting scoped to automation
+  only; a Warehouse folder holding just `.platform` (`MissingItemDefinitionFiles`,
+  refuses the whole directory); and a parameterised `.schedules`
+  (`InvalidArtifactJobSchedulerException` — Fabric validates the schema, so a
+  placeholder where a boolean belongs is fatal). After that it syncs, but reports
+  items Modified with no edit made: Fabric writes no trailing newline and rewrites
+  `.schedules` line endings, so a commit is whitespace noise. Git integration did
+  NOT split the semantic model's TMDL even though `getDefinition` does — the two
+  serialisers differ, and the earlier round-trip note conflated them.
+- **Portal round-trip fidelity via getDefinition (09-04):** `getDefinition` on our own deployed items
   shows what authoring in a workspace would commit back. Notebooks, reports and
   variable libraries are clean. A lakehouse gains `alm.settings.json`. A notebook
   with a schedule gains `.schedules` — so a schedule *is* part of what the

@@ -74,27 +74,33 @@ Reads and writes split by construction:
 - **Need dev's data inside your isolated runs?** OneLake shortcuts from your branched
   lakehouse into dev's tables — real input, nothing copied.
 
-### What survives the round trip
+### What a branched workspace does to this repository
 
-Fabric normalises a definition when a workspace hands it back, so what you commit
-from the portal is not byte-for-byte what you authored. Measured against this
-repository's own items:
+Tested, rather than assumed — a workspace was connected to a feature branch pointed at
+`solutions/sales/fabric`, and the results are worth knowing before you try it.
 
-| Item | Round trip |
+**Two things stop the sync outright:**
+
+| Symptom | Cause |
 |---|---|
-| Notebook, report, variable library | Clean |
-| Lakehouse | Gains `alm.settings.json`, which is harmless |
-| Notebook with a schedule | Gains `.schedules`, describing the schedule the item currently has |
-| **Semantic model** | **The expression moves out of `model.tmdl` into its own `expressions.tmdl`, carrying the author's endpoint and warehouse ID** |
-| Warehouse, SQL endpoint | No round trip at all — the definition API does not support them |
+| `MissingItemDefinitionFiles` | `wh_analytics.Warehouse` contains only `.platform`. A warehouse has no exportable definition, which fabric-cicd is happy to deploy but Git integration rejects — and it refuses the whole directory, not just that item |
+| `InvalidArtifactJobSchedulerException` | `.schedules` holds `"enabled": "SCHEDULE_ENABLED"` for `parameter.yml` to rewrite at deploy time. Fabric reads the file directly and requires a boolean. Placeholders survive in free-form files like TMDL; they fail wherever Fabric validates a schema |
 
-The semantic model is the one that bites: `parameter.yml` rewrites `model.tmdl`, and
-after a round trip the connection lives in a file it does not name, so the rewrite
-would replace nothing and the model would deploy still pointing at the author's
-workspace. A guard fails the pull request when a rewrite's placeholder is no longer
-where the rewrite expects it — move the expression back into `model.tmdl`, or point
-`parameter.yml` at the new file.
+**And once it does sync, the workspace reports changes you did not make.** With no edit at
+all, `lh_bronze` and `nb_ingest_orders` come back *Modified*, and committing produces a
+diff of pure whitespace: Fabric writes files with no trailing newline, and rewrites
+`.schedules` line endings. Nothing is lost, but every branched workspace starts dirty and
+a careless commit fills the repository with noise.
 
+One thing that did **not** happen, despite the API suggesting it would: Git integration
+left the semantic model untouched. `getDefinition` splits its expression out into a
+separate `expressions.tmdl` with the author's endpoint baked in, but the Git serialiser
+does not — the two paths disagree, and only the API path breaks `parameter.yml`. A guard
+catches that case either way.
+
+The honest summary: authoring in a branched workspace works for items a workspace can
+serialise cleanly, and this repository's solution folder is not one of them today. Treat
+the portal as a place to draft, and the repository as where a change becomes real.
 
 ## How a component deploys
 
