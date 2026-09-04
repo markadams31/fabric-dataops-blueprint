@@ -18,23 +18,28 @@ path, just faster.
 
 ## Two ways to author, one source of truth
 
-Every change ships the same way: as a commit. There are two ways to author one:
+Every change ships the same way: as a commit. There are two ways to author one, and they
+are not equally available.
 
-1. **Edit files in a local copy of the repository**, with the client tool that fits —
-   Power BI Desktop for reports, the SQL Database Projects extension for VS Code.
-   Edits reach the repository through an ordinary commit and push.
-2. **Edit in the Fabric web UI** — which needs a workspace.
+**Locally, in a copy of the repository — the default.** Every item here is a text file:
+TMDL for the semantic model, PBIR for the report, Python for the notebook, SQL for dbt.
+Edit them with whatever fits — Power BI Desktop, VS Code, an ordinary editor — and the
+change reaches the repository as a commit and a push. Nothing needs to be provisioned for
+you, and the whole validation half runs offline: linting, tests, the guards, a dbt parse.
 
-In Fabric, all work happens in workspaces, but the shared ones belong to the
-pipeline. `ws-<solution>-dev` is a deployment target: CI writes it, people hold
-Viewer and cannot edit it — deliberately, so the environment cannot drift from the
-truth. And a user's personal *My workspace*
-[cannot connect to Git](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations).
+Authoring against real data does not require a workspace of your own either: the team
+holds Viewer on `ws-<solution>-dev`, so Power BI Desktop can point at that warehouse's
+SQL endpoint while you build a model or report against data the pipeline maintains.
 
-Devs can work in a temporary workspace of their own, connected to a feature branch, so
-portal edits land in the repository like any other commit; when the pull request merges,
-the workspace is deleted. The lifecycle, step by step and with screenshots, is in
-[authoring in the portal](branched-workspaces.md).
+**In the Fabric portal — when your organisation allows it.** All work in Fabric happens in
+workspaces, and the shared ones belong to the pipeline: `ws-<solution>-dev` is a deployment
+target, so people hold Viewer and cannot edit it, deliberately, so it cannot drift from the
+truth. A personal *My workspace*
+[cannot connect to Git](https://learn.microsoft.com/fabric/cicd/git-integration/git-integration-process#considerations-and-limitations)
+at all. That leaves a temporary workspace of your own, connected to your feature branch —
+which requires rights to create workspaces, and
+[many organisations will not grant them](branched-workspaces.md#before-you-start). Where
+they do, the lifecycle is in [authoring in the portal](branched-workspaces.md).
 
 Worth naming precisely: Microsoft's
 [branched workspace](https://learn.microsoft.com/fabric/cicd/git-integration/branched-workspace)
@@ -43,6 +48,12 @@ Git-connected one — the link is what gives you the workspace tree, breadcrumbs
 Related Branches tab. No workspace here is Git-connected, so that command has nothing to
 branch out from. Creating the workspace and connecting it by hand gives the same isolation
 and the same round trip, but not the relationship.
+
+**What you give up by staying local** is running things interactively. A notebook can be
+edited as a file but not executed without Fabric compute, so Spark work is the one case
+that genuinely wants a workspace. Without one, the loop is: merge, let the build deploy to
+`ws-<solution>-dev`, and run it there. That is slower, and it is the honest cost of not
+handing out workspace-creation rights.
 
 ```mermaid
 flowchart LR
