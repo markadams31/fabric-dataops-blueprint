@@ -10,6 +10,7 @@ own ingestion fill the lakehouse.
 """
 
 import argparse
+import pathlib
 import sys
 
 from azure.identity import AzureCliCredential
@@ -22,6 +23,13 @@ def main() -> None:
     ap.add_argument("--solution", required=True)
     ap.add_argument("--environment", required=True)
     args = ap.parse_args()
+
+    # Only solutions with a dbt component consume the sample data, and only those
+    # carry a Bronze lakehouse for it to land in. A solution that reads another's
+    # marts through a contract — finance does — has nothing to seed.
+    if not (pathlib.Path("solutions") / args.solution / "dbt").is_dir():
+        print(f"{args.solution} has no dbt component — nothing to seed")
+        return
 
     cred = AzureCliCredential()
     headers = {"Authorization": f"Bearer {cred.get_token('https://api.fabric.microsoft.com/.default').token}"}
