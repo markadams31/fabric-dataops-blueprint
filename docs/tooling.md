@@ -21,6 +21,7 @@ carries, and which trade-offs this repository accepted.
 | [Job scheduler](https://learn.microsoft.com/fabric/fundamentals/job-scheduler) | Runs items on a schedule; also a REST API | Triggers |
 | [Activator](https://learn.microsoft.com/fabric/real-time-hub/tutorial-orchestrate-jobs-with-job-events) | Reacts to Fabric job and OneLake events and starts other items | Event-driven orchestration |
 | [Apache Airflow job](https://learn.microsoft.com/fabric/data-factory/cicd-apache-airflow-jobs) | Managed Airflow inside Fabric | Complex DAG orchestration |
+| [Bulk Import Item Definitions](https://learn.microsoft.com/rest/api/fabric/core/items/bulk-import-item-definitions) (beta) | Imports many item definitions in one call, resolving dependency order itself | The other way to do an API-driven release |
 | [Fabric REST APIs](https://learn.microsoft.com/rest/api/fabric/articles/item-management/definitions/item-definition-overview) | Everything above, underneath | What you fall back to |
 
 ## What the platform carries, and what you carry
@@ -49,25 +50,40 @@ carries, the less you control.
 
 ## Choosing
 
-Four questions decide it. They are about your requirements, not about the tools.
+Microsoft's [Choose the best Fabric CI/CD workflow option for you](https://learn.microsoft.com/fabric/cicd/manage-deployment)
+sets out four options. Condensed:
 
-1. **Where does truth live — a workspace or the repository?** If the answer is the dev
-   workspace, deployment pipelines are a good fit and much less work. If it must be the
-   repository, you need Git integration or an API-driven release.
-2. **Must changes be tested before production?** Neither deployment pipelines nor Git
-   sync run tests in transit. If a gate matters, the release has to pass through a CI
-   runner.
+| Option | Source of truth | Branching | Deployment mechanism | Per-stage configuration |
+|---|---|---|---|---|
+| 1 — Git integration | Git | Gitflow, a primary branch per stage | Fabric Git APIs (`update-from-git`) | Separate per-stage branches |
+| **2 — Fabric Items APIs** | Git, a single `main` | Trunk-based | Items APIs: fabric-cicd or Bulk Import | **Build-environment scripts** |
+| 3 — Deployment pipelines | The `dev` workspace | Trunk-based | Deployment pipelines APIs | Deployment rules and auto-binding |
+| 4 — ISV, many customer workspaces | Git, a single `main` | Trunk-based | Items APIs, per customer workspace | Per-customer release parameters |
+
+**This repository is Option 2**, which is worth knowing before reading further: a single
+`main`, stage workspaces that are not connected to Git, and a build environment that
+transforms item definitions before they are uploaded. Microsoft's page is the map; this
+one says which turns were taken and why.
+
+Four questions decide which option is yours. They are about requirements, not tools.
+
+1. **Where does truth live — a workspace or the repository?** If the answer is the `dev`
+   workspace, Option 3 is a good fit and much less work. If it must be the repository,
+   Options 1, 2 or 4.
+2. **Must changes be tested before production?** Neither Git synchronisation nor a
+   deployment pipeline runs tests in transit. If a gate matters, the release passes
+   through a CI runner — which is what a *build environment* is.
 3. **Does anything outside Fabric take part?** Transformation in dbt, infrastructure in
-   Terraform, an external artefact store — each pulls you towards a runner-driven release,
-   because Fabric can only schedule and orchestrate what lives inside it.
-4. **How many teams?** One team on a handful of reports has no scaling problem and
-   should not build one. The machinery here pays off when solutions and reviewers
-   multiply.
+   Terraform, an artefact store — each pulls towards Option 2, because Fabric can only
+   schedule and orchestrate what lives inside it.
+4. **How many teams?** One team with a handful of reports has no scaling problem and
+   should not build one. This machinery pays off when solutions and reviewers multiply.
 
-A rough rule: **portal-first, report-centric, one team → deployment pipelines. Repository-first,
-tested, multi-team → API-driven.** Git synchronisation sits between them, and its cost is
-that environments become branches, which reintroduces the drift that promoting one
-artefact exists to prevent.
+A rough rule: **portal-first, report-centric, one team → Option 3. Repository-first,
+tested, multi-team → Option 2.** Option 1 sits between them, and its cost is that each
+stage gets its own long-lived branch, so changes move by cherry-pick and environments
+drift apart. Microsoft's own closing note is worth repeating: many organisations take a
+hybrid approach, and you are not obliged to pick exactly one.
 
 ## What this repository chose
 
@@ -75,7 +91,8 @@ artefact exists to prevent.
 |---|---|---|---|
 | **API-driven release** with fabric-cicd | Deployment pipelines; Git synchronisation | The repository is the source of truth, changes are tested in transit, and item coverage is whatever the library supports | Schedules, cross-workspace references and platform state become your job |
 | **Terraform** for workspaces, identities and access | Portal setup; `fab` scripts | Access and existence are reviewable in a pull request, and a solution becomes a folder | The provider is young, and it refuses to plan against a paused capacity |
-| **Build once, promote the bundle** | Rebuild from a Git ref per environment, as all three Microsoft options do | The bytes proven in dev are the bytes that reach production | A concept Microsoft's tooling has no notion of, and artefacts expire (90 days) |
+| **Build once, promote the bundle** | Rebuild in each stage's build environment, which is what Option 2 describes | The bytes proven in dev are the bytes that reach production | The build environment is Microsoft's idea; the *immutability* is ours, so nothing in their tooling models an artefact — and Actions artefacts expire after 90 days |
+| **No workspace is connected to Git** | Option 2 connects `dev` to Git for authoring; only `test` and `prod` are disconnected | Every environment is built by identical machinery, so `dev` cannot drift from the repository | Fabric's *branch out to workspace* has no Git-connected workspace to branch from, so developers connect one themselves |
 | **Managed identities with OIDC** | Service principal with a client secret | No secret exists to leak, rotate or forget | Federated subjects are fiddly, and some APIs still refuse service principals |
 | **`parameter.yml` and a variable library** | A variable library alone | Semantic-model TMDL cannot read a library, and `notebookutils.variableLibrary` has no service-principal support | Two mechanisms to learn instead of one |
 | **`schedules.yml` applied through the Job Scheduler API** | An external cron only; `.schedules` under Git sync | The trigger is versioned beside the item and promoted with it | Our file format, not Microsoft's; Fabric auto-disables a scheduler after roughly ten consecutive failures |
@@ -90,7 +107,8 @@ repository's own addition, which the guidance's release options do not have.
 ## Deliberately not used
 
 - **Deployment pipelines** — the source of truth becomes the dev workspace, nothing is
-  tested in transit, and item coverage is [partial](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/understand-the-deployment-process#considerations-and-limitations).
+  tested in transit, deployments are linear and need their own permissions to create and
+  manage, and item coverage is [partial](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/understand-the-deployment-process#considerations-and-limitations).
 - **Git synchronisation as the release** — makes environments equal to branches.
 - **[Apache Airflow job](https://learn.microsoft.com/fabric/data-factory/cicd-apache-airflow-jobs)** —
   its Fabric connection needs a client secret and its CI/CD is preview and does not
