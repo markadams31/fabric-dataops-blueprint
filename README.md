@@ -40,13 +40,12 @@ then stops looking like a series of defects and starts looking like the cost of 
 - Warehouse Git integration wants to own the schema as a database project, because the
   platform assumes a workspace owns its warehouse — where here, dbt does.
 
-**In standard terms, this is two of the four [GitOps principles](https://opengitops.dev/).**
-It holds *declarative* and *versioned and immutable*: desired state lives in Git, and bundles
-are immutable and identified by a content digest. It does not hold *pulled automatically* or
-*continuously reconciled*, and cannot — both require an agent running inside the target
-platform, and Fabric has none. Changes are pushed by GitHub Actions on merge, and nothing
-converges a workspace back towards the repository if someone edits it in place. That is the
-same absence as the grain mismatch, stated in someone else's vocabulary.
+One limit follows from all of this and is worth stating plainly, because it bounds what the
+design can promise. Nothing runs inside Fabric to keep a workspace matching the repository.
+Changes are pushed by GitHub Actions when something merges, and if a workspace is edited in
+place, nothing notices and nothing converges it back. The repository is the source of truth
+by construction and by permission — humans hold Viewer on the shared workspaces — rather than
+by continuous enforcement.
 
 The delivery model is worth naming as precisely. **Dev is continuous deployment** — every
 merge that passes the gates reaches it unattended. **Test and production are continuous
