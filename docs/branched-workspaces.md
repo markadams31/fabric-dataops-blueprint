@@ -37,6 +37,28 @@ the Git connection itself.
 | A [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with **Contents: read and write** on this repository | Fabric's GitHub connector authenticates with a token, not with your Microsoft sign-in. This is the one secret the design sanctions, it is yours alone, and a short expiry is fine |
 | Capacity headroom | A workspace needs a capacity, and this demo's is paused most of the time — resume it first |
 
+That first row is a real ask, and worth naming as one. It is two grants, not one — the
+tenant's *Users can create workspaces* setting, and capacity contributor so the workspace
+can sit on the shared capacity — and neither can be narrowed to "may create a branched
+workspace for a solution I work on". A developer who has them can create and delete
+workspaces anywhere in the tenant. Plenty of organisations will not agree to that, and
+they are not being unreasonable.
+
+If yours is one of them, self-service does not have to mean standing rights. Both
+alternatives keep the developer experience and move the privilege into the platform:
+
+- **Provision on request.** A dispatchable workflow running as `mi-fabric-platform`,
+  which already holds these rights, creates the workspace, places it on the capacity,
+  names it by convention and grants the requester Admin. Nobody needs a tenant grant, and
+  every creation is an audited run. You would still supply your own Git credentials
+  afterwards, or commits carry the platform identity's name rather than yours.
+- **Declare it.** Terraform creates one workspace per developer per solution from a list
+  in this repository, so onboarding yourself is a pull request. Strongest governance,
+  fully declarative, and the workspaces exist whether or not anyone is using them.
+
+This repository takes the direct route because it is a demonstration with one maintainer.
+An enterprise should expect to pick one of the two above.
+
 ## 1. Create the branch first
 
 Fabric connects to a branch that already exists, so push it before you go near the portal.
