@@ -8,16 +8,22 @@ process*).
 
 ## The words, once
 
-Most of this design rests on six terms, and three of them are also the names of workflows,
-which is where a reader usually stumbles.
+Every term this repository uses in a special sense, in one place. Most are ordinary
+industry words used ordinarily; where one is not, the table says which industry concept it
+maps to. Three are also the names of workflows, which is where a reader usually stumbles.
 
 | Term | What it means here | Worth knowing |
 |---|---|---|
 | **Solution** | One team's product: a folder under `solutions/`, three workspaces, its own deploy identity and reviewers | Adding one is a folder copy; everything else derives from the name |
-| **Bundle** | The immutable artefact built once from one commit: `<solution>-<sha>.tar.gz`, carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
+| **Bundle** | The build artefact, in the ordinary sense: built once from one commit, immutable thereafter. Here it is `<solution>-<sha>.tar.gz` carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
 | **Build** | The phase that produces a bundle | `build-and-deploy.yml` does more than the phase it is named after: on every merge it builds *and* deploys to dev |
 | **Deploy** | Apply one bundle to one environment | Always the same mechanism, whichever environment |
 | **Promote** | Deploy a bundle that has *already* succeeded in dev to the next environment, rebuilding nothing | The difference from deploy is provenance, not mechanism — `promote.yml` refuses a bundle whose dev deploy did not succeed, and refuses anything that is not a build of `main` |
+
+| **Feature workspace** | A developer's own workspace, connected to their own branch. **Microsoft's term**, not one coined here | Distinct from a *branched workspace*, which is the Fabric feature that creates one — unavailable here, because no workspace is Git-connected |
+| **Guard** | A pull-request check, in the ordinary CI sense. Eight of them, in `deploy/guards.py` | They exist because Fabric fails quietly: seven of the eight catch a mistake that would otherwise deploy cleanly and go wrong later |
+| **Data contract** | The industry term, used in the industry sense: one solution publishes tables another agrees to read. Here it is a OneLake shortcut plus a guard that checks the producer still builds the table | Versioned in the consumer's folder, so a contract disappears with either side of it |
+| **Heartbeat** | The scheduled production run: rebuild the marts, test them, open an issue if it fails | Ordinary scheduled-health-check sense; it proves production still works rather than changing it |
 
 **Release** is deliberately absent from that list. Microsoft uses it for the whole promotion
 process, and this repository borrows it in that sense only — there is no release stage, no
@@ -107,7 +113,7 @@ flowchart LR
 
 Promotion re-deploys the *same* bundle to the next environment; nothing is rebuilt
 between environments. The scheduled production run follows the same rule: it reads the
-Deployments ledger for the commit prod was promoted at and operates *that* tree, so a
+record of GitHub Deployments for the commit prod was promoted at and operates *that* tree, so a
 merge to `main` cannot reach production by way of the nightly job.
 
 Where solutions meet, the contract is checked in the pull request. A shortcut
