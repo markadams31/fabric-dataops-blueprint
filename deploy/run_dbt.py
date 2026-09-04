@@ -38,7 +38,7 @@ def main() -> None:
     else:
         solution = pathlib.Path("solutions") / args.solution
     if not (solution / "dbt").is_dir():
-        print(f"{args.solution} has no dbt component — nothing to rebuild")
+        print(f"{args.solution} has no dbt directory — nothing to rebuild")
         return
 
     cred = AzureCliCredential()

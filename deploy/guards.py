@@ -5,7 +5,7 @@ usage: guards.py [solutions-root]
 Each guard returns a list of violation strings; any violation fails the run.
 Guards protect against the mistakes that deploy cleanly and hurt later:
 duplicated logicalIds, workspace GUIDs baked into definitions, legacy report
-formats, files no component owns.
+formats, files nothing owns.
 """
 
 import json
@@ -18,8 +18,8 @@ import yaml
 from solutions import solutions
 
 # The project's scope: what fabric-cicd deploys, plus dbt as the
-# transformation engine. A new component type is one driver plus its name here.
-KNOWN_COMPONENTS = {"fabric", "dbt"}
+# transformation engine. These are the only directories a solution may contain.
+SOLUTION_DIRECTORIES = {"fabric", "dbt"}
 KNOWN_FILES = {"solution.yml", "parameter.yml", "README.md"}
 
 GUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
@@ -47,13 +47,13 @@ SERVICE_PRINCIPAL_REFUSED = {
 
 
 def guard_unclaimed(root: pathlib.Path) -> list[str]:
-    """Every path in a solution belongs to a component or a known file."""
+    """Every path in a solution is a directory we deploy or a file we recognise."""
     out = []
     for sol in solutions(root):
         for entry in sorted(sol.iterdir()):
-            if entry.is_dir() and entry.name not in KNOWN_COMPONENTS:
-                out.append(f"{sol.name}: directory '{entry.name}/' matches no component type "
-                           f"(known: {sorted(KNOWN_COMPONENTS)})")
+            if entry.is_dir() and entry.name not in SOLUTION_DIRECTORIES:
+                out.append(f"{sol.name}: directory '{entry.name}/' is not deployed by anything "
+                           f"(a solution holds: {sorted(SOLUTION_DIRECTORIES)})")
             if entry.is_file() and entry.name not in KNOWN_FILES:
                 out.append(f"{sol.name}: file '{entry.name}' is not a recognised solution file")
     return out

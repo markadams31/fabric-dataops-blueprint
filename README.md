@@ -141,11 +141,13 @@ workspaces — so a compromised deployment reaches one team's data and no part o
 crossing: scheduled operations run as the platform identity, because only it can resume a paused
 capacity. It moves *data* on a published definition; it never publishes.
 
-## Different components, the same phases
+## The same four phases, whatever changed
 
-A solution mixes different types of item — reports, semantic models, notebooks, transformation code, sometimes a
-database — and each type has its own idea of what "build" and "test" mean. Rather than flattening those differences,
-the design gives every component the same four phases and lets each type implement them its own way:
+A solution holds two kinds of thing, in directories named after them: `fabric/` for the items
+fabric-cicd deploys — reports, semantic models, notebooks, the lakehouse and warehouse — and `dbt/`
+for the transformation project, when the solution has one. A report and a SQL model disagree about
+what "build" and "test" mean, so rather than flatten that, every change moves through the same four
+phases and each kind does its own work inside them:
 
 - **Validate** — checks that run in the pull request with no cloud access: linting, format locks, report and model rules.
 - **Build** — produce the deployable artefact: a bundle of item definitions, a parsed dbt project.
@@ -154,9 +156,8 @@ the design gives every component the same four phases and lets each type impleme
 
 The repository's scope is deliberately the set of items fabric-cicd can deploy, plus dbt for transformation — which
 is very nearly the set of things Fabric allows to be deployed as code at all.
-A solution's components are declared by its folders — the directory name is the component type — and the workflows
-run the phases in dependency order, knowing nothing about the tools. Another component of an existing type is a folder.
-A new *type* — Airflow, a Fabric App — is one implementation of the four phases.
+The workflows run the phases knowing nothing about the tools inside them: they see directories,
+not report editors or SQL compilers.
 
 ## Quickstart
 

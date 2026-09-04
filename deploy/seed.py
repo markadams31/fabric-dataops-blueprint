@@ -24,11 +24,11 @@ def main() -> None:
     ap.add_argument("--environment", required=True)
     args = ap.parse_args()
 
-    # Only solutions with a dbt component consume the sample data, and only those
+    # Only solutions with a `dbt` directory consume the sample data, and only those
     # carry a Bronze lakehouse for it to land in. A solution that reads another's
     # marts through a contract — finance does — has nothing to seed.
     if not (pathlib.Path("solutions") / args.solution / "dbt").is_dir():
-        print(f"{args.solution} has no dbt component — nothing to seed")
+        print(f"{args.solution} has no dbt directory — nothing to seed")
         return
 
     cred = AzureCliCredential()
