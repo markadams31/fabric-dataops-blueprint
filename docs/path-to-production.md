@@ -74,6 +74,27 @@ Reads and writes split by construction:
 - **Need dev's data inside your isolated runs?** OneLake shortcuts from your branched
   lakehouse into dev's tables — real input, nothing copied.
 
+### What survives the round trip
+
+Fabric normalises a definition when a workspace hands it back, so what you commit
+from the portal is not byte-for-byte what you authored. Measured against this
+repository's own items:
+
+| Item | Round trip |
+|---|---|
+| Notebook, report, variable library | Clean |
+| Lakehouse | Gains `alm.settings.json`, which is harmless |
+| Notebook with a schedule | Gains `.schedules`, describing the schedule the item currently has |
+| **Semantic model** | **The expression moves out of `model.tmdl` into its own `expressions.tmdl`, carrying the author's endpoint and warehouse ID** |
+| Warehouse, SQL endpoint | No round trip at all — the definition API does not support them |
+
+The semantic model is the one that bites: `parameter.yml` rewrites `model.tmdl`, and
+after a round trip the connection lives in a file it does not name, so the rewrite
+would replace nothing and the model would deploy still pointing at the author's
+workspace. A guard fails the pull request when a rewrite's placeholder is no longer
+where the rewrite expects it — move the expression back into `model.tmdl`, or point
+`parameter.yml` at the new file.
+
 
 ## How a component deploys
 
