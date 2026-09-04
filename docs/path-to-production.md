@@ -84,11 +84,33 @@ Related Branches tab. No workspace here is Git-connected, so that command has no
 branch out from. Creating the workspace and connecting it by hand gives the same isolation
 and the same round trip, but not the relationship.
 
-**What you give up by staying local** is running things interactively. A notebook can be
-edited as a file but not executed without Fabric compute, so Spark work is the one case
-that genuinely wants a workspace. Without one, the loop is: merge, let the build deploy to
-`ws-<solution>-dev`, and run it there. That is slower, and it is the honest cost of not
-handing out workspace-creation rights.
+### What you cannot run locally
+
+Editing is local. Execution is not. Every gate that runs on a pull request here is
+deliberately cloud-free — ruff, pytest, the guards and a `dbt parse` need no capacity, no
+credentials and no workspace, which is why a fork's pull request is safe to run and
+finishes in seconds. The cost is exact: **nothing is executed against Fabric until after
+the merge**, when the build deploys to `ws-<solution>-dev`. SQL that parses but does not
+run reaches `main` first, and dev is what catches it.
+
+| What needs Fabric | Why | What to do instead |
+|---|---|---|
+| `dbt build`, `dbt test` | dbt-fabric connects to a live warehouse over TDS. Viewer on the shared dev workspace can read that warehouse but not write to it, and does not grant OneLake read at all, so neither half of the model can run there | Point `DBT_FABRIC_SERVER` and `DBT_FABRIC_DATABASE` at **any empty warehouse you can write to** — dbt builds every object it needs. `deploy/build.py` and `deploy/deploy.py` will set one up in a workspace of your own using the same machinery CI uses |
+| `nb_ingest_orders` | `notebookutils` is [only available in the remote runtime](https://learn.microsoft.com/fabric/data-engineering/fabric-runtime-in-vscode), and the paths it reads are OneLake | Usually nothing. dbt reads the seeded CSVs from `Files/` with `OPENROWSET`, not this notebook's Delta tables, so dbt work never depends on running it. When you do need it, the [Fabric Data Engineering VS Code extension](https://learn.microsoft.com/fabric/data-engineering/setup-vs-code-extension) edits and debugs locally while executing on remote Spark |
+| Seeing a report render | Power BI Desktop is Windows-only | Edit the PBIR files directly — that is the committed format — and see the render in dev after the merge. There is no Linux-native alternative, and this repository has never tested the Desktop round trip |
+| A semantic model against real data | Direct Lake binds to a live SQL endpoint | Desktop can point at dev's SQL endpoint on the Viewer grant while you author; `parameter.yml` rewrites the binding at deploy time |
+| `terraform plan` over Fabric resources | The provider refuses to plan against a paused capacity | Resume the capacity first, or leave it — platform changes are applied by CI behind a gate anyway |
+
+The pattern in that table is worth naming, because it is a property of the platform
+rather than of this repository: **a Fabric item is a definition, not a program.** Any of
+them can be edited anywhere, and none of them can be executed anywhere but a workspace on
+a capacity. The alternatives above are all the same trick — keep the editor local and send
+the execution somewhere that has compute.
+
+One alternative deliberately not taken: running the dbt models against DuckDB or a local
+SQL Server for a fast offline loop. The staging models reach OneLake through `OPENROWSET`,
+so they would have to be rewritten to a dialect both engines share — trading a gate that
+proves the models run in Fabric for a faster one that proves they run somewhere else.
 
 ```mermaid
 flowchart LR
