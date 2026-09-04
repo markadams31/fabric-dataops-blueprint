@@ -177,7 +177,7 @@ versions.
 | Bulk Import/Export item definitions | Fabric roadmap — target Q3 2026, GA (beta today, `?beta=true`) | GA | Closest native shape to our bundle. Wait for GA: adopting at beta means changing call sites twice |
 | Associate an identity with items and schedules | Fabric roadmap — target Q4 2026, public preview; [beta API today](https://learn.microsoft.com/rest/api/fabric/articles/item-management/associate-item-identity) | Ships | Removes the deploy-identity-owns-the-item problem and the 30-day owner keep-alive concern |
 | Tenant settings by API | [Update Tenant Setting](https://learn.microsoft.com/rest/api/fabric/admin/tenants/update-tenant-setting) — preview, "not recommended for production", SP and MI supported | Leaves preview | Would make the quickstart's portal step scriptable, removing the only manual step in setup |
-| Delegated branch-out — now named **"Branch workspace admin profile"** | Fabric roadmap, target **Q3 2026**, public preview: *lets developers use branch-out without needing create-workspace or assign-capacity permissions; admins pre-configure guardrails — developer role, capacity assignment, admin list* | Ships | Adopt it: it removes the two tenant grants the portal authoring path currently needs, which is the main reason that path is optional here |
+| Delegated branch-out — named **"Branch workspace admin profile"** on the roadmap | Learn states the commitment with **no date**; the only dated source is the roadmap feed (**Q3 2026**, public preview), whose quarters are explicitly at-risk — *lets developers use branch-out without needing create-workspace or assign-capacity permissions; admins pre-configure guardrails — developer role, capacity assignment, admin list* | Ships | Adopt it: it removes the two tenant grants the portal authoring path currently needs, which is the main reason that path is optional here |
 | Workspace item Bulk Import/Export APIs | [Fabric CI/CD announcement](https://community.fabric.microsoft.com/blog/fbc_fabricupdatesblogs/new-cicd-resources-for-microsoft-fabric-from-concepts-to-end-to-end-automation/5358502) (Mar 2026) | GA | Evaluate as a definitions backup/restore mechanism for the README's system-of-record caveat — Microsoft still recommends fabric-cicd for deployment |
 
 Two facts worth keeping alongside that table, because they close questions rather
@@ -188,7 +188,16 @@ definition, its warehouse adapter accepts only Entra OAuth rather than service
 principals, and it has no build caching — three independent reasons dbt stays in
 GitHub Actions. Neither is a matter of taste; both are documented platform limits.
 
-One unresolved contradiction: Microsoft's Azure DevOps automation guide describes
-service-principal Git connection as supported, while another page states plainly that
-*"service principals are not supported for Git APIs"*. Everything this repository has
-run against the Git APIs used a user identity, so the question is untested here.
+Two unresolved contradictions in Microsoft's own docs, recorded rather than guessed at.
+The Azure DevOps automation guide describes service-principal Git connection as
+supported, while another page states plainly that *"service principals are not supported
+for Git APIs"* — everything this repository has run against those APIs used a user
+identity, so it is untested here. And CI/CD support for the SQL analytics endpoint was
+announced as preview in June 2026, while later-dated warehouse docs still say version
+control for it "isn't currently available" and that deployment pipelines don't support
+the item. Verify in-tenant before designing around either.
+
+A precision worth keeping about variable libraries: an item-reference variable *value*
+holds a workspace ID and an item ID, so it can point across workspaces — but the library
+itself must live in the same workspace as the items consuming it. The two statements read
+as contradictory and are not.
