@@ -129,27 +129,9 @@ Three honest limits of the bundle:
   data ever travels between environments.
 
 
-## Where this design diverges from Microsoft's guidance
+## Why this shape, and not another
 
-This repository lands on the end state
-[Microsoft's CI/CD best-practices guidance](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd)
-recommends — an API-driven release process with fabric-cicd, Terraform-provisioned
-infrastructure, trunk-based branching, service principals throughout, repository
-environments as approval gates. Where it deliberately takes a different side of a
-decision that guidance frames, the choice and its trade-off are recorded here.
-
-| Microsoft's framing | This repository | Why |
-|---|---|---|
-| A separate capacity per environment is the recommended practice | One shared F2 across every environment of every solution | Cost: this is a demonstration sized to ~US$0.36/hour. The trade-off is real — no noisy-neighbour isolation between test and prod — and a production estate should split capacities by changing one attribute in the solution module. |
-| A separate Terraform configuration per environment, so a dev mistake cannot touch prod | One configuration and state file spanning all environments | Workspaces are cattle here: definitions redeploy from Git and a deleted workspace restores within retention. The blast-radius control is the reviewer-gated apply, not state isolation. An estate where workspaces carry irreplaceable state should split the configuration. |
-| The development process anchors on a Git-connected dev workspace (*Update from Git* after each merge, *branch out* from it) | No workspace is Git-connected; dev is a deployment target exactly like test and prod | Every environment is built by the same machinery, so dev cannot drift and what worked in dev is what ships. The cost: developers reach the portal through a self-created branched workspace rather than a one-click *branch out* (note above). |
-| Three release options: deployment pipelines, Git synchronization (a workspace per environment, each synced to a branch), API-driven | API-driven; deployment pipelines argued against in the README; Git-sync not chosen | Git-sync makes environments equal to branches, which reintroduces per-environment drift (cherry-picks, hotfixes to branches) that build-once/promote-many exists to prevent. |
-| Variable libraries should usually be the first choice for parameterization | `parameter.yml` rewrites do the work; the Variable Library is deployed and its per-environment value set activated, but nothing reads it at runtime | Two limits, both found by testing. Microsoft's own dependency-binding matrix shows semantic-model connections never auto-bind, so a library cannot rebind them — `parameter.yml` is the sanctioned home for those rewrites, enforced by a repository guard. And `notebookutils.variableLibrary` has no service-principal support, so code deployed by this pipeline cannot read a library at all. The library stays as the shape a solution grows into when that support lands. |
-| Schedules travel with the item — inside deployment pipelines, or as a `.schedules` file in the Git folder | Declared in `schedules.yml` and applied through the Job Scheduler API on every deploy, from the same bundle | An item's REST definition carries content only, so an API-driven release cannot publish a schedule *with* the item; Microsoft's guidance for this path is to manage schedules by code, and doing it in the bundle keeps the trigger versioned beside the thing it triggers. They ship disabled here because this demo pauses its capacity nightly and Fabric auto-disables a scheduler after roughly ten consecutive failures. dbt is scheduled from Actions regardless, because it runs outside Fabric. |
-| Least privilege for every automated caller | The platform identity keeps a `refs/heads/main` federated credential and runs the nightly schedule | Terraform must be able to plan from `main` before an environment gate exists to approve it, and only an identity with Azure rights can resume the capacity. The blast radius is real and is why `main` takes no direct pushes: reaching that credential means merging a reviewed pull request. |
-
-Terminology, mapped once: what this repository calls a **solution** (a team's product
-plus its per-environment workspaces and delivery config) is the guidance's *Fabric
-CI/CD project*; **promote** is its *release process*; the **bundle** is this
-repository's own extension — a built, immutable snapshot of item definitions, which
-the guidance's release options all rebuild from a branch instead.
+Every choice above — an API-driven release, a bundle, Terraform for access, dbt
+outside Fabric — had alternatives, and each cost something. Those decisions, the
+tools available, and where this repository departs from Microsoft's guidance are
+set out in [the tooling and choices page](tooling.md).
