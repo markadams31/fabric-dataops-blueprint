@@ -1,49 +1,61 @@
 # Fabric DataOps Blueprint
 
-In organisations that adopt modern software practices, production is not a place users edit.
-It is the result of running processes against source code: change the source, run the
-processes, get a new production. This repository applies that to Microsoft Fabric on one
-principle — **code is the source of truth** — and what makes it interesting is that Fabric's
-own model is the opposite.
+In organisations that adopt modern software practices, the production environment is not a place users can directly edit.  
+It is the result of running processes against source code. Change the source, run the processes, and you get a new production.
+Most Fabric estates are not operated this way. Instead, changes are made to items in place.
 
-**Fabric's model is that the workspace is the source of truth**, and not as a habit its users
-fell into: it is what the primitives do. Git integration synchronises workspace *state* rather
-than publishing a build. Deployment pipelines copy items between workspaces. Variables bind at
-runtime, inside a workspace. An item definition is, literally, what the portal would have
-written. Asserting the reverse is where nearly every difficulty here comes from — worth knowing
-early, because the friction then reads as the cost of a position rather than a list of defects:
-
-- A workspace synced from Git gets **un-parameterised** definitions: a sync is not a deploy, so
-  Git hands over the repository's bytes, and those bytes are placeholders.
-- Two first-party serialisers disagree about the same item — one serves the portal round trip,
-  the other the definition API, and nothing reconciled them until someone built artefacts.
-- Warehouse Git integration wants to own the schema as a database project, because the platform
-  assumes a workspace owns its warehouse. Here dbt does.
-
-What the position buys:
+This repository explores the adoption of Microsoft Fabric based on one key principle: **code is the source of truth**.
+The beneficial implications that flow from this core foundation include:
 - **History.** In the service, an overwritten report is gone. In Git, every version is kept, and restoring one is a redeploy.
 - **Consistency.** Every environment is built from the same source.
 - **Traceability.** The pull request records who changed what, the reasoning, and who approved it.
 - **Reliability.** Changes are tested before reaching production.
-- **Scalability.** Adding a team's **solution** — one team's product, with its own workspaces, identity and approvers — is configuration, not a project. The fiftieth runs with the same pipelines, checks and tests as the first.
+- **Scalability.** Adding a team's **solution** — one team's product, with its own workspaces, identity and approvers — is configuration, not a project. The fiftieth runs with the same pipelines, checks, and tests as the first.
 
-And what it does not. Nothing runs inside Fabric to keep a workspace matching the repository:
-changes are pushed on merge, and a workspace edited in place is never converged back. The
-repository is the source of truth by construction and by permission — humans hold Viewer on the
-shared workspaces — not by continuous enforcement. Code also rebuilds definitions, not data.
-Where a table holds history the upstream no longer has, its state is irreplaceable;
+This design is intended for large enterprises that want to manage a data estate at scale with confidence.
+
+One caveat: code rebuilds definitions, not data.  Where a table holds history the upstream no
+longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such —
 [what rolls back and what does not](docs/path-to-production.md#what-rolls-back-and-what-does-not)
-says which table here is one.
+says which table in this solution is one and which platform mechanisms exist for it.
 
-Dev is **continuous deployment** — every merge that passes the gates reaches it unattended.
-Test and production are **continuous delivery**: every bundle is releasable, and releasing one
-is a decision a person makes.
+## Working against the grain
 
-This is aimed at large enterprises managing a data estate at scale, and the toll is only worth
-paying when the requirements are real: the repository must be the source of truth, changes must
-be tested before production, something outside Fabric takes part, and more than one team needs
-isolation. **Where those are negotiable, Fabric's own tooling is simpler and the better
-answer** — which is what the next section is for.
+Fabric's native model is the opposite of this one: **the workspace is the source of truth.**
+That is not a habit its users fell into, it is what the primitives do. Git integration
+synchronises workspace *state* rather than publishing a build. Deployment pipelines copy
+items from one workspace into another. Variables bind at runtime, inside a workspace. An item
+definition is, literally, what the portal would have written.
+
+This repository asserts the reverse — the repository is the truth, and a tested artefact moves
+between environments — and that single disagreement is where nearly every difficulty in it
+comes from. Naming it early is worth more than any individual workaround, because the friction
+then stops looking like a series of defects and starts looking like the cost of the position:
+
+- A workspace synced from Git gets **un-parameterised** definitions, because a sync is not a
+  deploy. Git hands over the repository's bytes, and those bytes are placeholders.
+- Two first-party serialisers disagree about the same item, because one serves the portal
+  round trip and the other serves the definition API, and nothing had to reconcile them until
+  someone tried to build artefacts from both.
+- Warehouse Git integration wants to own the schema as a database project, because the
+  platform assumes a workspace owns its warehouse — where here, dbt does.
+
+One limit follows from all of this and is worth stating plainly, because it bounds what the
+design can promise. Nothing runs inside Fabric to keep a workspace matching the repository.
+Changes are pushed by GitHub Actions when something merges, and if a workspace is edited in
+place, nothing notices and nothing converges it back. The repository is the source of truth
+by construction and by permission — humans hold Viewer on the shared workspaces — rather than
+by continuous enforcement.
+
+The delivery model is worth naming as precisely. **Dev is continuous deployment** — every
+merge that passes the gates reaches it unattended. **Test and production are continuous
+delivery**: every bundle is releasable, and releasing one is a decision a person makes.
+
+None of those is a defect, and none of them is avoidable while holding this position. They are
+the toll, and it is only worth paying when the requirements are real: the repository must be
+the source of truth, changes must be tested before production, something outside Fabric takes
+part, and more than one team needs isolation. **Where those are negotiable, Fabric's own
+tooling is simpler and the better answer** — which is what the next section is for.
 
 ## Choosing a release process
 
