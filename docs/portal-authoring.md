@@ -261,7 +261,7 @@ the portal as a place to draft, and the repository as where a change becomes rea
 `solutions/<name>/fabric` contains `wh_analytics.Warehouse`, which holds only a
 `.platform` file because a warehouse has no exportable definition. fabric-cicd deploys it
 happily; Git integration rejects **the whole folder** with `MissingItemDefinitionFiles`.
-Until the warehouse is created by Terraform rather than shipped in the bundle, connect
+Until the warehouse is created by Terraform rather than shipped in the artefact, connect
 your workspace to a branch where that folder is absent.
 
 The measured detail behind this, and what else a round trip does to item definitions, is

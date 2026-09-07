@@ -1,4 +1,4 @@
-# Promote a bundle that already proved itself in dev to test, then prod — the
+# Promote an artefact that already proved itself in dev to test, then prod — the
 # identical bytes, nothing rebuilt. Each environment pauses for its reviewers.
 # Rollback is this same workflow pointed at an earlier build run.
 name: promote
@@ -10,7 +10,7 @@ on:
         default: sales
         required: true
       run_id:
-        description: build run ID whose bundle to promote (must be green)
+        description: build run ID whose artefact to promote (must be green)
         required: true
 
 permissions:
@@ -38,11 +38,11 @@ jobs:
           branch=$(echo "$run" | jq -r .head_branch)
           event=$(echo "$run" | jq -r .event)
           sha=$(echo "$run" | jq -r .head_sha)
-          # Per-solution provenance: bundles are per solution, so judge THIS
+          # Per-solution provenance: artefacts are per solution, so judge THIS
           # solution's dev deploy — a sibling solution's red must not freeze it.
           job=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" --paginate \
             --jq ".jobs[] | select(.name == \"deploy-dev ($SOLUTION) / deploy\") | .conclusion" | head -1)
-          [ "$job" = "success" ] || { echo "run $RUN_ID: dev deploy for $SOLUTION concluded '${job:-absent}' — only dev-proven bundles promote"; exit 1; }
+          [ "$job" = "success" ] || { echo "run $RUN_ID: dev deploy for $SOLUTION concluded '${job:-absent}' — only dev-proven artefacts promote"; exit 1; }
           [ "$path" = ".github/workflows/build-and-deploy.yml" ] && [ "$branch" = "main" ] || {
             echo "run $RUN_ID is not a build of main ($path @ $branch) — refusing"; exit 1; }
           echo "artifact=$SOLUTION-$sha" >> "$GITHUB_OUTPUT"
@@ -76,7 +76,7 @@ jobs:
       run_id: ${{ inputs.run_id }}
 
   # GitHub stamps a deployment with the ref the workflow ran from, which for a
-  # rollback is today's main rather than the bundle being deployed. The ledger is
+  # rollback is today's main rather than the artefact being deployed. The ledger is
   # what the production schedule trusts to decide which commit to operate, so
   # record what was actually promoted.
   record:
@@ -95,5 +95,5 @@ jobs:
           set -euo pipefail
           d=$(gh api "repos/${{ github.repository }}/deployments?environment=${{ inputs.solution }}-${{ matrix.environment }}&per_page=1" --jq '.[0].id')
           gh api -X POST "repos/${{ github.repository }}/deployments/$d/statuses" \
-            -f state=success -f description="bundle ${{ needs.provenance.outputs.sha }}" >/dev/null
-          echo "${{ inputs.solution }}-${{ matrix.environment }} runs bundle ${{ needs.provenance.outputs.sha }}"
+            -f state=success -f description="artefact ${{ needs.provenance.outputs.sha }}" >/dev/null
+          echo "${{ inputs.solution }}-${{ matrix.environment }} runs artefact ${{ needs.provenance.outputs.sha }}"

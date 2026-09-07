@@ -17,7 +17,7 @@ lives in README.md and docs/ — nothing here is needed to *use* the blueprint.
   below, not into dated files in the tree.
 - Mermaid on GitHub strips `<...>` as HTML — write literal angle brackets as
   `#60;` / `#62;`. Diagram colour vocabulary: gold = source of truth / the
-  bundle, green = writable by you, blue = pipeline-owned.
+  artefact, green = writable by you, blue = pipeline-owned.
 - ruff excludes `*.Notebook` (Fabric injects runtime globals); the guards skip
   local dbt artefacts (`target/`, `logs/`, `.user.yml`, `__pycache__`).
 
@@ -83,7 +83,7 @@ round of live testing settled:
   dynamic attributes are `$`-prefixed (`$items.<Type>.<name>.$sqlendpoint`);
   skip explicit Direct Lake refresh right after warehouse writes — it reframes
   on query.
-- **Promotion (09-03):** bundles verified byte-identical dev → test → prod;
+- **Promotion (09-03):** artefacts verified byte-identical dev → test → prod;
   rollback is the same workflow pointed at an earlier run.
 - **Operate (09-03):** the Job Scheduler runs notebooks as a managed identity;
   cross-solution reads need the Contributor contract grant.
@@ -101,7 +101,7 @@ round of live testing settled:
     everywhere, wrong forever. A guard now resolves the producer from the
     contract's placeholder and checks the model still exists.
   - GitHub stamps a deployment with the ref the workflow ran from, so a
-    rollback recorded today's main. Promote records the promoted bundle as a
+    rollback recorded today's main. Promote records the promoted artefact as a
     deployment status; the schedule reads that.
   - Local dbt artefacts (`target/`, `logs/`, `.user.yml`) kept a retired
     solution's folder alive, and a local plan proposed recreating everything
@@ -197,7 +197,7 @@ round of live testing settled:
   raises on failure and returns `DeploymentStatus.completed` otherwise;
   `FabricWorkspace` resolves a workspace by name. Two things that look like
   wins are not: the library's git-diff change detection cannot work on a
-  bundle (a bundle has no git history, and promotion deploys an old one), and
+  artefact (an artefact has no git history, and promotion deploys an old one), and
   moving demo seeding into the ingestion notebook relocates code rather than
   removing it — deploys would then have to wait on a Spark session.
 - **Schedules as code (09-04):** a `.schedules` file in the item folder is
@@ -309,7 +309,7 @@ versions.
 | Warehouse definition REST API | Fabric roadmap — "Create, Get, Update warehouse definition REST API", target Q3 2026, GA: *provision a warehouse initialised from a definition payload supporting Dacpac and SQL project* | Ships | **Do not adopt blindly** — it would make fabric-cicd a second owner of warehouse schema, which dbt owns. Relevant only if dbt ever leaves |
 | Transaction support for Git integration and deployment pipelines | Fabric roadmap — target Q4 2026, GA: atomic deploys with automatic rollback, "no partial state" | Ships | Revisit the documented "deployment is not atomic" limit in path-to-production |
 | File-level commit | Fabric roadmap — target Q3 2026, public preview | Ships | Would let a feature-workspace commit exclude Fabric's whitespace-only churn |
-| Bulk Import/Export item definitions | Fabric roadmap — target Q3 2026, GA (beta today, `?beta=true`) | GA | Closest native shape to our bundle. Wait for GA: adopting at beta means changing call sites twice |
+| Bulk Import/Export item definitions | Fabric roadmap — target Q3 2026, GA (beta today, `?beta=true`) | GA | Closest native shape to our artefact. Wait for GA: adopting at beta means changing call sites twice |
 | Associate an identity with items and schedules | Fabric roadmap — target Q4 2026, public preview; [beta API today](https://learn.microsoft.com/rest/api/fabric/articles/item-management/associate-item-identity) | Ships | Removes the deploy-identity-owns-the-item problem and the 30-day owner keep-alive concern |
 | Tenant settings by API | [Update Tenant Setting](https://learn.microsoft.com/rest/api/fabric/admin/tenants/update-tenant-setting) — preview, "not recommended for production", SP and MI supported | Leaves preview | Would make the quickstart's portal step scriptable, removing the only manual step in setup |
 | Delegated branch-out — named **"Branch workspace admin profile"** on the roadmap | Learn states the commitment with **no date**; the only dated source is the roadmap feed (**Q3 2026**, public preview), whose quarters are explicitly at-risk — *lets developers use branch-out without needing create-workspace or assign-capacity permissions; admins pre-configure guardrails — developer role, capacity assignment, admin list* | Ships | Adopt it: it removes the two tenant grants the portal authoring path currently needs, which is the main reason that path is optional here |

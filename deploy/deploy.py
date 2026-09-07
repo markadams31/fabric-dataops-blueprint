@@ -1,8 +1,8 @@
-"""Deploy a bundle to one environment.
+"""Deploy an artefact to one environment.
 
-usage: deploy.py --bundle FILE --manifest FILE --solution NAME --environment ENV
+usage: deploy.py --artefact FILE --manifest FILE --solution NAME --environment ENV
 
-Verifies the bundle digest, resolves the target workspace by name, publishes every
+Verifies the artefact digest, resolves the target workspace by name, publishes every
 Fabric item type in one pass (fabric-cicd), then verifies item counts. Runs as
 whatever identity `az login` established — locally you, in CI the solution's
 deploy identity.
@@ -104,26 +104,26 @@ def export_contract_ids(workdir: pathlib.Path, headers: dict, environment: str) 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--bundle", required=True)
+    ap.add_argument("--artefact", required=True)
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--solution", required=True)
     ap.add_argument("--environment", required=True)
     args = ap.parse_args()
 
     manifest = json.loads(pathlib.Path(args.manifest).read_text())
-    workdir = pathlib.Path(tempfile.mkdtemp(prefix="bundle-"))
-    with tarfile.open(args.bundle) as tar:
+    workdir = pathlib.Path(tempfile.mkdtemp(prefix="artefact-"))
+    with tarfile.open(args.artefact) as tar:
         tar.extractall(workdir, filter="data")
 
     digest = content_digest(workdir)
     if digest != manifest["content_digest"]:
-        sys.exit(f"digest mismatch: bundle={digest} manifest={manifest['content_digest']}")
-    print(f"bundle verified: {manifest['solution']}@{manifest['source_sha'][:12]} digest ok")
+        sys.exit(f"digest mismatch: artefact={digest} manifest={manifest['content_digest']}")
+    print(f"artefact verified: {manifest['solution']}@{manifest['source_sha'][:12]} digest ok")
     built_with = manifest.get("tools", {}).get("fabric-cicd")
     if built_with and built_with != version("fabric-cicd"):
-        # The bundle is immutable; the toolchain deploying it is not — a bundle
+        # The artefact is immutable; the toolchain deploying it is not — an artefact
         # proven in dev can reach prod under a newer library.
-        print(f"warning: bundle built with fabric-cicd {built_with}, "
+        print(f"warning: artefact built with fabric-cicd {built_with}, "
               f"deploying with {version('fabric-cicd')}")
 
     cred = AzureCliCredential()
@@ -194,7 +194,7 @@ def seed_bronze(cred, headers, ws_id, items) -> None:
 
 
 def run_dbt(workdir, cred, headers, ws_id, items) -> None:
-    """Run every dbt project in the bundle against the solution's warehouse."""
+    """Run every dbt project in the artefact against the solution's warehouse."""
     lh = one(items, "Lakehouse", "lh_bronze")
     wh = one(items, "Warehouse", "wh_")
     props = requests.get(f"{API}/workspaces/{ws_id}/warehouses/{wh['id']}",

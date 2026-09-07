@@ -1,8 +1,8 @@
-"""Pack one solution into an immutable bundle.
+"""Pack one solution into an immutable build artefact.
 
 usage: build.py --solution NAME --sha GITSHA [--out DIR]
 
-The bundle is the unit of deployment: the same bytes go to every environment.
+The artefact is the unit of deployment: the same bytes go to every environment.
 A solution's directories say what it holds (the directory name is the
 type); anything unrecognised fails the build rather than silently not deploying.
 """
@@ -21,7 +21,7 @@ from guards import KNOWN_FILES, LOCAL_ARTIFACTS, SOLUTION_DIRECTORIES  # single 
 
 
 def wanted(root: pathlib.Path, f: pathlib.Path) -> bool:
-    """Bundle only source: local tool artifacts never travel."""
+    """Artefact only source: local tool artifacts never travel."""
     return f.is_file() and not set(f.relative_to(root).parts) & LOCAL_ARTIFACTS
 
 
@@ -61,12 +61,12 @@ def main() -> None:
 
     out = pathlib.Path(args.out)
     out.mkdir(exist_ok=True)
-    bundle = out / f"{args.solution}-{args.sha}.tar.gz"
-    with tarfile.open(bundle, "w:gz") as tar:
+    artefact = out / f"{args.solution}-{args.sha}.tar.gz"
+    with tarfile.open(artefact, "w:gz") as tar:
         tar.add(src, arcname=".",
                 filter=lambda ti: None if set(pathlib.PurePath(ti.name).parts) & LOCAL_ARTIFACTS else ti)
     (out / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"built {bundle} digest={manifest['content_digest'][:16]}… holds={directories}")
+    print(f"built {artefact} digest={manifest['content_digest'][:16]}… holds={directories}")
 
 
 if __name__ == "__main__":

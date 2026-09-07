@@ -166,14 +166,14 @@ Three mechanisms, in the order a change meets them:
 Resume the capacity first if it is paused (Actions → capacity → run with
 `resume`) — deploys need it running, and the nightly schedule pauses it.
 
-Push to `main`. `build-and-deploy.yml` packs each solution into an immutable bundle and the
+Push to `main`. `build-and-deploy.yml` packs each solution into an immutable artefact and the
 reusable `deploy-env.yml` deploys it into the dev workspace as that solution's own
-identity — publish, seed, `dbt build`, verify. Re-deploying the same bundle is a
+identity — publish, seed, `dbt build`, verify. Re-deploying the same artefact is a
 no-op.
 
 ## 8. Promote
 
 Resume the capacity (Actions → capacity → resume), then run the **promote** workflow (Actions → promote) giving it
-a green build run's ID. The same bundle that proved itself in dev goes to `test`,
+a green build run's ID. The same artefact that proved itself in dev goes to `test`,
 then `prod`, pausing for your approval before each. Nothing is rebuilt between
 environments; rollback is the same workflow pointed at an earlier run.

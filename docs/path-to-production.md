@@ -15,10 +15,10 @@ maps to. Three are also the names of workflows, which is where a reader usually 
 | Term | What it means here | Worth knowing |
 |---|---|---|
 | **Solution** | One team's product: a folder under `solutions/`, three workspaces, its own deploy identity and reviewers | Adding one is a folder copy; everything else derives from the name |
-| **Bundle** | The build artefact, in the ordinary sense: built once from one commit, immutable thereafter. Here it is `<solution>-<sha>.tar.gz` carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
-| **Build** | The phase that produces a bundle | `build-and-deploy.yml` does more than the phase it is named after: on every merge it builds *and* deploys to dev |
-| **Deploy** | Apply one bundle to one environment | Always the same mechanism, whichever environment |
-| **Promote** | Deploy a bundle that has *already* succeeded in dev to the next environment, rebuilding nothing | The difference from deploy is provenance, not mechanism — `promote.yml` refuses a bundle whose dev deploy did not succeed, and refuses anything that is not a build of `main` |
+| **Artefact** | The build artefact, in the ordinary sense: built once from one commit and immutable thereafter. Here it is `<solution>-<sha>.tar.gz`, carrying a `release-manifest.json` with its content digest and pinned tool versions | The only thing that moves between environments |
+| **Build** | The phase that produces an artefact | `build-and-deploy.yml` does more than the phase it is named after: on every merge it builds *and* deploys to dev |
+| **Deploy** | Apply one artefact to one environment | Always the same mechanism, whichever environment |
+| **Promote** | Deploy an artefact that has *already* succeeded in dev to the next environment, rebuilding nothing | The difference from deploy is provenance, not mechanism — `promote.yml` refuses an artefact whose dev deploy did not succeed, and refuses anything that is not a build of `main` |
 
 | **Feature workspace** | A developer's own workspace, connected to their own branch. **Microsoft's term**, not one coined here | Distinct from a *branched workspace*, which is the Fabric feature that creates one — unavailable here, because no workspace is Git-connected |
 | **Guard** | A pull-request check, in the ordinary CI sense. Eight of them, in `deploy/guards.py` | They exist because Fabric fails quietly: seven of the eight catch a mistake that would otherwise deploy cleanly and go wrong later |
@@ -26,27 +26,27 @@ maps to. Three are also the names of workflows, which is where a reader usually 
 | **Heartbeat** | The scheduled production run: rebuild the marts, test them, open an issue if it fails | Ordinary scheduled-health-check sense; it proves production still works rather than changing it |
 
 **Release** is deliberately absent from that list. Microsoft uses it for the whole promotion
-process, and this repository borrows it in that sense only — there is no release stage, no
-release artefact and no release branch. The one local use is the bundle's
-`release-manifest.json`, which records what a bundle is rather than marking a stage.
+process, and this repository borrows it in that sense only — there is no release stage and no
+release branch. The one place the word appears locally is `release-manifest.json`, which
+records what an artefact contains rather than marking a stage it has reached.
 
 ## Branching
 
 The repository is trunk-based: one long-lived branch, `main`, and short-lived feature
 branches — one per change, each optionally backed by a workspace of your own —
 kept for the branch, or carried between branches as you go. Environments are not branches: dev, test and prod
-differences resolve from values *inside* the bundle, and promotion moves the same
-built bundle behind approval gates, recorded as GitHub Deployments. Branches are for
-work in progress; environments are for released bundles. A hotfix takes the same
+differences resolve from values *inside* the artefact, and promotion moves the same
+built artefact behind approval gates, recorded as GitHub Deployments. Branches are for
+work in progress; environments are for released artefacts. A hotfix takes the same
 path, just faster.
 
 ## The three workspaces
 
-Each solution has three. **dev proves the bundle, test proves the promotion, prod serves
+Each solution has three. **dev proves the artefact, test proves the promotion, prod serves
 the users.**
 
 **dev** takes every merge, unattended, minutes after it lands: a real publish, a real
-`dbt build`, real tests. Promotion refuses any bundle whose dev deploy was not green, so
+`dbt build`, real tests. Promotion refuses any artefact whose dev deploy was not green, so
 dev is both the first environment and the gate. Nobody authors here — unlike the `dev` of
 a deployment pipeline, it holds what the last merge produced and nothing else.
 
@@ -69,7 +69,7 @@ reach production behind the approvals. Rollback is promote pointed at an older b
 
 The workspaces themselves are identical — one Terraform module builds all three with the
 same capacity, roles and identity — so what a workspace *is* never varies; only what has
-happened to the bundle inside it. Three simplifications come with that:
+happened to the artefact inside it. Three simplifications come with that:
 
 - One capacity for all three: separation is by permission, not compute.
 - One viewers group for all three: the team sees test and prod alike.
@@ -93,9 +93,9 @@ flowchart LR
     subgraph CI ["Integrate — once per change"]
         SRC["solutions/#60;name#62;/<br/>the source"] --> V["Validate<br/>pull request, no cloud"]
         V -->|"merge"| BLD["Build<br/>on main"]
-        BLD --> BUN[("bundle<br/>#60;solution#62;-#60;sha#62;")]
+        BLD --> BUN[("artefact<br/>#60;solution#62;-#60;sha#62;")]
     end
-    subgraph CD ["Release — the same bundle in every environment, as mi-deploy-#60;solution#62;"]
+    subgraph CD ["Release — the same artefact in every environment, as mi-deploy-#60;solution#62;"]
         DEVE["dev<br/>deploy · verify"] -->|"approval"| TESTE["test<br/>deploy · verify"] -->|"approval"| PRODE["prod<br/>deploy · verify"]
     end
     BUN --> CD
@@ -109,9 +109,9 @@ flowchart LR
 - **Build** — produce the deployable artefact, once.
 - **Deploy** — apply that artefact to one environment; the identity can write to
   that solution's workspaces and nothing else.
-- **Verify** — prove it worked before the bundle is allowed any further.
+- **Verify** — prove it worked before the artefact is allowed any further.
 
-Promotion re-deploys the *same* bundle to the next environment; nothing is rebuilt
+Promotion re-deploys the *same* artefact to the next environment; nothing is rebuilt
 between environments. The scheduled production run follows the same rule: it reads the
 record of GitHub Deployments for the commit prod was promoted at and operates *that* tree, so a
 merge to `main` cannot reach production by way of the nightly job.
@@ -123,16 +123,16 @@ that table. Without it the failure is silent: dbt leaves a renamed model's old
 table in place, so the consumer's shortcut keeps resolving and its data simply
 stops changing.
 
-Three honest limits of the bundle:
+Three honest limits of the artefact:
 
 - **Deployment is not atomic.** Items publish, then dbt rebuilds the marts. A dbt failure
   in the middle leaves published definitions over marts that have not caught up; the
-  remediation is to fix forward or promote the previous bundle, and the nightly run will
+  remediation is to fix forward or promote the previous artefact, and the nightly run will
   not repair it on its own.
 - **Bundles expire.** They are GitHub Actions artefacts, kept 90 days on a public
   repository, so "roll back to any earlier run" has a horizon. Past it, rebuild at that
-  commit: the digest is derived from source alone, so the bundle reproduces byte for byte.
-- **The bundle carries definitions, not data.** Sample seeding reads the checkout, and no
+  commit: the digest is derived from source alone, so the artefact reproduces byte for byte.
+- **The artefact carries definitions, not data.** Sample seeding reads the checkout, and no
   data ever travels between environments.
 
 
@@ -140,12 +140,12 @@ Three honest limits of the bundle:
 
 A deploy changes what things *are*. It never, by itself, changes what they *contain*:
 publishing a definition creates an empty warehouse, a notebook that has not run, a model
-with no rows. Data appears when something the bundle defined is executed. Those are two
+with no rows. Data appears when something the artefact defined is executed. Those are two
 lifecycles, and conflating them is the usual source of confusion:
 
 | | Definitions | Content |
 |---|---|---|
-| What changes it | Deploying the bundle | Running something the bundle defined |
+| What changes it | Deploying the artefact | Running something the artefact defined |
 | What triggers it | A merge, or a promotion someone approved | A schedule, an event, or a deploy |
 | How it reaches an environment | Built once, promoted unchanged | It does not travel — each environment produces its own |
 | Where it is declared | `solutions/<name>/` | The same repository. Only the trigger differs |
@@ -154,7 +154,7 @@ lifecycles, and conflating them is the usual source of confusion:
 
 - **Work that runs inside Fabric is scheduled by Fabric.** `nb_ingest_orders` carries a
   `.schedules` file in its own item folder, so its trigger is part of its definition and
-  travels in the bundle like everything else. `parameter.yml` decides which environments
+  travels in the artefact like everything else. `parameter.yml` decides which environments
   actually run it — here, prod only.
 - **Work that runs outside Fabric is scheduled outside it.** dbt cannot run inside Fabric —
   [three documented reasons](tooling.md#what-this-repository-chose) — so GitHub Actions
@@ -163,11 +163,11 @@ lifecycles, and conflating them is the usual source of confusion:
 
 So "does the trigger live in source code?" is yes either way, and that is the important part.
 What differs is *which* source: a Fabric-run trigger is a file inside the item, and travels in
-the bundle; an externally-run trigger is a workflow, and travels by being merged. Neither
+the artefact; an externally-run trigger is a workflow, and travels by being merged. Neither
 needs a separate DevOps pipeline — same repository, same pull request, different clock.
 
 One consequence is worth following, because it explains a piece of machinery that otherwise
-looks arbitrary. An external scheduler is not the bundle, so it has to be *told* which bundle
+looks arbitrary. An external scheduler is not the artefact, so it has to be *told* which artefact
 production is running: the nightly run reads the record of GitHub Deployments to find the
 commit prod was promoted at, and operates that tree. A Fabric-run trigger never needs this,
 because it was published alongside the thing it triggers.
@@ -177,11 +177,11 @@ because it was published alongside the thing it triggers.
 for event-driven runs, data pipelines for multi-step flows, Airflow for complex DAGs. None is
 here because the estate does not need one: a notebook and a dbt project, one nightly run. A
 solution with real dependencies between steps would reach for a data pipeline, and it would
-deploy in the bundle like any other item.
+deploy in the artefact like any other item.
 
 ## What rolls back, and what does not
 
-Promotion makes definitions reversible: point `promote` at an earlier run and the bundle
+Promotion makes definitions reversible: point `promote` at an earlier run and the artefact
 proven then is deployed again, unchanged. That path has been exercised, and it is the whole
 of what this repository can undo.
 
@@ -220,7 +220,7 @@ demonstration and a poor one for production.
 
 ## Why this shape, and not another
 
-Every choice above — an API-driven release, a bundle, Terraform for access, dbt
+Every choice above — an API-driven release, an artefact, Terraform for access, dbt
 outside Fabric — had alternatives, and each cost something. Those decisions, the
 tools available and where this repository departs from Microsoft's guidance are
 set out in [the tooling and choices page](tooling.md).
