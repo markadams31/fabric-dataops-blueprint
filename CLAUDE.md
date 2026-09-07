@@ -264,6 +264,46 @@ item-reference variable type is still preview, and nothing here has tested wheth
 fabric-cicd publishes a shortcut that references a variable. Worth a spike before the next
 solution is added.
 
+## How this compares to other public projects
+
+Six comparable repositories cloned and read (2026-09-07): `bennyaustin/fabric-accelerator`
+(154 stars, the most adopted), `kevchant/AzureDevOps-fabric-cicd-with-automated-tests`,
+`ShollyWolly/Fabric-Agentic-Analytics` (closest stack — Terraform plus fabric-cicd plus
+medallion), `sramitsharma/fabric-devops-platform` (multi-tenant, GitLab), the
+`FabricDevCamp` whitepaper resources, and `vinod-soni-microsoft/FABRIC-CICD-PROJECT`.
+
+**Three things here are not done anywhere else in that sample.** Nobody builds an immutable
+artefact and promotes it — artefact promotion appears only for Docker images and Terraform
+plans in the GitLab templates, never for Fabric items, so every one of these rebuilds per
+environment. Nobody does change detection either, which is worth knowing before adding it.
+And authentication is not close: **fourteen occurrences of `CLIENT_SECRET` across the sample
+against one federated credential**, so secretless OIDC is a genuine differentiator rather
+than a claim.
+
+**Two findings validate decisions taken here.** `fabric-accelerator` has a workflow step
+literally named *"Replace OLD IDs with NEW IDs in workspace files"* — the manual GUID
+substitution that `export_contract_ids` replaced. And `Fabric-Agentic-Analytics` manages
+`fabric_warehouse`, `fabric_lakehouse` **and `fabric_notebook`** in Terraform: once an
+infrastructure tool owns Fabric items it slides into owning item *content*, so notebook
+bodies end up in HCL rather than Fabric's own Git format, losing the portal round trip. That
+is the slope avoided by keeping data-plane items out of Terraform.
+
+**Four things they do better, in descending order of what they would buy here.**
+
+| What | Where | Why it matters |
+|---|---|---|
+| [`data_factory_testing_framework`](https://github.com/microsoft/data-factory-testing-framework) | `kevchant` | Microsoft's own library for unit-testing pipeline activities and expressions **offline**. Nothing here tests Fabric item behaviour without deploying. Only applies once a data pipeline exists, but it is the answer to that gap |
+| Blocking security scans in CI | `fabric-devops-platform` | gitleaks, semgrep, trivy and checkov, every one a gate. This repository has none — the closest is GitHub push protection and Dependabot alerts. Checkov over `platform/terraform` is the highest-value single addition, since Terraform is currently the least-scrutinised code here |
+| A coverage gate (`--cov-fail-under=80`) | `fabric-devops-platform` | 34 tests here and no measurement of what they cover |
+| Metadata-driven orchestration | `fabric-accelerator` | Its ELT framework drives pipelines from configuration rather than one pipeline per source. The scaling answer for ingestion this repository does not have, and the reason its author can ship reusable pipelines rather than examples |
+
+**Where the most-adopted project spends its effort is worth noting**, because it is the
+opposite of here: `fabric-accelerator` is imperative (a twenty-step `fab` CLI workflow,
+`workflow_dispatch` only, no CI on merge) but ships reusable pipelines, real-time items,
+lakehouse optimisation, a wiki and a video. It optimises for *give me a working platform*;
+this repository optimises for *give me a defensible delivery process*. Both are legitimate,
+and an adopter wanting content rather than process is better served there.
+
 ## What could move to the platform
 
 A source-level audit (2026-09-04) of the Fabric Terraform provider v1.13 and
