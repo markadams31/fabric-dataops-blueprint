@@ -77,8 +77,22 @@ round of live testing settled:
   tenant-level with `allow-no-subscriptions`.
 - **Data path (09-03):** OneLake DFS upload and T-SQL staging both work as a
   managed identity; dbt-fabric authenticates via CLI tenant-level.
-- **Scope (09-03):** the repo covers fabric-cicd's ACCEPTED_ITEM_TYPES plus dbt;
-  most excluded item types are undeployable by any tool.
+- **Scope, recomputed 2026-09-07:** the repo covers fabric-cicd's 29
+  ACCEPTED_ITEM_TYPES plus dbt. **The earlier claim that "most excluded item types
+  are undeployable by any tool" no longer holds** — Git integration has grown and
+  now versions roughly thirteen types fabric-cicd cannot deploy. Three exception
+  classes, and they need different answers:
+  1. *Deployable here but refuses a service principal:* **MLExperiment** and
+     **UserDataFunction**. Measured against the API specs; `guard_service_principal_types`
+     fails the pull request rather than letting the deploy fail.
+  2. *Versionable in Git, not deployable by fabric-cicd:* MLModel, Cosmos database,
+     Graph Model, Graph QuerySet, Metrics Set, Org app, Digital twin builder,
+     Anomaly detection, Event Schema Set, Operations Agent, Mirrored Azure Databricks
+     Catalog, Plan, and the Healthcare industry items. Mostly recent or preview. An
+     adopter needing one of these can version it but must deploy it another way —
+     the gap is upstream's, and it closes when fabric-cicd adds the type.
+  3. *No code path anywhere:* Dashboard, Datamart, Dataflow Gen1, Scorecard, and the
+     SQL analytics endpoint. Nothing deploys these, so no tool choice helps.
 - **Serve (09-03):** `deploy_with_config` needs `core.parameter` explicitly;
   dynamic attributes are `$`-prefixed (`$items.<Type>.<name>.$sqlendpoint`);
   skip explicit Direct Lake refresh right after warehouse writes — it reframes
