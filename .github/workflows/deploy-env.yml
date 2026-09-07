@@ -1,6 +1,6 @@
-# Deploy one solution's bundle to one environment, as that solution's own
+# Deploy one solution's artefact to one environment, as that solution's own
 # identity. Reusable: build-and-deploy.yml calls it for dev, promotion will call it for
-# test and prod with the identical bundle.
+# test and prod with the identical artefact.
 name: deploy-env
 on:
   workflow_call:
@@ -15,7 +15,7 @@ on:
         type: string
         required: true
       run_id:
-        description: run to download the bundle from (defaults to the current run)
+        description: run to download the artefact from (defaults to the current run)
         type: string
         required: false
         default: ""
@@ -52,10 +52,10 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
       - run: uv sync --frozen --no-dev
-      - name: deploy the bundle
+      - name: deploy the artefact
         run: |
           uv run python deploy/deploy.py \
-            --bundle dist/${{ inputs.solution }}-*.tar.gz \
+            --artefact dist/${{ inputs.solution }}-*.tar.gz \
             --manifest dist/release-manifest.json \
             --solution ${{ inputs.solution }} \
             --environment ${{ inputs.environment }}
@@ -73,6 +73,6 @@ jobs:
       - name: build and test the marts
         run: |
           uv run python deploy/run_dbt.py \
-            --bundle dist/${{ inputs.solution }}-*.tar.gz \
+            --artefact dist/${{ inputs.solution }}-*.tar.gz \
             --solution ${{ inputs.solution }} \
             --environment ${{ inputs.environment }}

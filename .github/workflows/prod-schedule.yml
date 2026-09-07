@@ -2,8 +2,8 @@
 # marts with their tests. Failures open an issue.
 #
 # It operates the commit prod is *running*, not main: the Deployments ledger says
-# which commit was last promoted, and a bundle's digest is derived from source
-# alone, so that commit's tree is the deployed bundle's content. Without this the
+# which commit was last promoted, and an artefact's digest is derived from source
+# alone, so that commit's tree is the deployed artefact's content. Without this the
 # schedule would rebuild prod's marts from unpromoted code every night — the
 # approval gates bypassed by the very machinery meant to respect them.
 name: prod-schedule
@@ -51,10 +51,11 @@ jobs:
           for d in $(gh api "repos/${{ github.repository }}/deployments?environment=$SOLUTION-prod&per_page=20" --jq '.[].id'); do
             statuses=$(gh api "repos/${{ github.repository }}/deployments/$d/statuses?per_page=20")
             [ "$(echo "$statuses" | jq -r '[.[] | select(.state=="success")] | length')" != "0" ] || continue
-            # promote records the promoted bundle here; the deployment's own ref
+            # promote records the promoted artefact here; the deployment's own ref
             # is only the commit promote ran from. Older deployments have no such
             # status, so fall back to the ref for them.
-            sha=$(echo "$statuses" | jq -r '[.[] | select(.description // "" | startswith("bundle "))][0].description // empty' | cut -d" " -f2)
+            # "bundle " is the pre-rename marker: statuses recorded before then still say it.
+            sha=$(echo "$statuses" | jq -r '[.[] | select(.description // "" | startswith("artefact ") or startswith("bundle "))][0].description // empty' | cut -d" " -f2)
             [ -n "$sha" ] || sha=$(gh api "repos/${{ github.repository }}/deployments/$d" --jq .sha)
             break
           done

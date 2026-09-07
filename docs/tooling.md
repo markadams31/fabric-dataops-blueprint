@@ -31,7 +31,7 @@ This is the single most useful thing to understand and the source of most confus
 
 ```mermaid
 flowchart LR
-    subgraph DEF ["The item definition — what travels in the bundle"]
+    subgraph DEF ["The item definition — what travels in the artefact"]
         P[".platform<br/>type · display name · logicalId"]
         C["the content<br/>notebook-content.py · TMDL · PBIR"]
         S[".schedules<br/>when it runs"]
@@ -117,7 +117,7 @@ Microsoft's own closing note is worth repeating: many organisations take a hybri
 |---|---|---|---|
 | **API-driven release** with fabric-cicd | Deployment pipelines; Git synchronisation | The repository is the source of truth, changes are tested in transit, and item coverage is whatever the library supports | Schedules, cross-workspace references and platform state become your job |
 | **Terraform** for workspaces, identities and access | Portal setup; `fab` scripts | Access and existence are reviewable in a pull request, and a solution becomes a folder | The provider is young, and it refuses to plan against a paused capacity |
-| **Build once, promote the bundle** | Rebuild in each stage's build environment, which is what Option 2 describes | The bytes proven in dev are the bytes that reach production | The build environment is Microsoft's idea; the *immutability* is ours, so nothing in their tooling models an artefact — and Actions artefacts expire after 90 days |
+| **Build once, promote the artefact** | Rebuild in each stage's build environment, which is what Option 2 describes | The bytes proven in dev are the bytes that reach production | The build environment is Microsoft's idea; the *immutability* is ours, so nothing in their tooling models an artefact — and Actions artefacts expire after 90 days |
 | **No workspace is connected to Git** | Option 2 connects `dev` to Git for authoring; only `test` and `prod` are disconnected | Every environment is built by identical machinery, so `dev` cannot drift from the repository | Fabric's *branch out to workspace* has no Git-connected workspace to branch from, so developers connect one themselves |
 | **Managed identities with OIDC** | Service principal with a client secret | No secret exists to leak, rotate or forget | Federated subjects are fiddly, and some APIs still refuse service principals |
 | **`parameter.yml`** for every per-environment value | A variable library | Semantic-model TMDL cannot read a library, and `notebookutils.variableLibrary` has no service-principal support, so nothing here could consume one. `vl_config` is deployed to prove the item type round-trips and is read by nothing | One mechanism, and a deployed example that is honest about doing no work |
@@ -128,6 +128,6 @@ Microsoft's own closing note is worth repeating: many organisations take a hybri
 | **Shared capacity, one Terraform state** | A capacity and a configuration per environment, [as Microsoft recommends](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd) | Cost, for a demonstration | No noisy-neighbour isolation, and a wider blast radius on a bad apply |
 
 Terminology maps onto the guidance like this: what this repository calls a **solution** is
-its *Fabric CI/CD project*, **promote** is its *release process*, and the **bundle** is this
+its *Fabric CI/CD project*, **promote** is its *release process*, and the **artefact** is this
 repository's own addition, which the guidance's release options do not have. The local
 meanings are defined in [the path to production](path-to-production.md#the-words-once).

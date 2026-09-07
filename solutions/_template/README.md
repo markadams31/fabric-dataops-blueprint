@@ -42,5 +42,5 @@ Most names are yours. Two are not, because the pipeline finds items by them:
 `fabric/<item>.<Type>/.schedules` declares when an item runs. It is Fabric's own
 format — the same file a workspace writes when you commit from the portal — and
 fabric-cicd publishes it with the rest of the definition, so a trigger travels in
-the bundle with the thing it triggers. Which environments actually run it is a
+the artefact with the thing it triggers. Which environments actually run it is a
 `parameter.yml` rewrite of the `enabled` flag, like any other per-environment value.

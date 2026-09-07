@@ -1,73 +1,29 @@
 # Fabric DataOps Blueprint
 
 In organisations that adopt modern software practices, the production environment is not a place users can directly edit.  
-It is the result of running processes against source code. Change the source, run the processes, and you get a new production.
-Most Fabric estates are not operated this way. Instead, changes are made to items in place.
+It results from running processes against source code: change the source, processes run, get a new production.
 
-This repository explores the adoption of Microsoft Fabric based on one key principle: **code is the source of truth**.
-The beneficial implications that flow from this core foundation include:
+This repository applies that key princicle of **code is the source of truth** to Microsoft Fabric. What makes it interesting is that
+Fabric's native model treats the workspace as the source of truth due to how its primatives work. Git integration syncs workspace state, 
+deployment pipelines copy items between workspaces, variables bind at runtime, changes are made to items in place.
+
+This design is intended for enterprises that want to manage a large data estate at scale with confidence. The benefits of a code first approach include:
 - **History.** In the service, an overwritten report is gone. In Git, every version is kept, and restoring one is a redeploy.
 - **Consistency.** Every environment is built from the same source.
 - **Traceability.** The pull request records who changed what, the reasoning, and who approved it.
 - **Reliability.** Changes are tested before reaching production.
 - **Scalability.** Adding a team's **solution** — one team's product, with its own workspaces, identity and approvers — is configuration, not a project. The fiftieth runs with the same pipelines, checks, and tests as the first.
 
-This design is intended for large enterprises that want to manage a data estate at scale with confidence.
-
-One caveat: code rebuilds definitions, not data.  Where a table holds history the upstream no
-longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such —
-[what rolls back and what does not](docs/path-to-production.md#what-rolls-back-and-what-does-not)
-says which table in this solution is one and which platform mechanisms exist for it.
-
-## Working against the grain
-
-Fabric's native model is the opposite of this one: **the workspace is the source of truth.**
-That is not a habit its users fell into, it is what the primitives do. Git integration
-synchronises workspace *state* rather than publishing a build. Deployment pipelines copy
-items from one workspace into another. Variables bind at runtime, inside a workspace. An item
-definition is, literally, what the portal would have written.
-
-This repository asserts the reverse — the repository is the truth, and a tested artefact moves
-between environments — and that single disagreement is where nearly every difficulty in it
-comes from. Naming it early is worth more than any individual workaround, because the friction
-then stops looking like a series of defects and starts looking like the cost of the position:
-
-- A workspace synced from Git gets **un-parameterised** definitions, because a sync is not a
-  deploy. Git hands over the repository's bytes, and those bytes are placeholders.
-- Two first-party serialisers disagree about the same item, because one serves the portal
-  round trip and the other serves the definition API, and nothing had to reconcile them until
-  someone tried to build artefacts from both.
-- Warehouse Git integration wants to own the schema as a database project, because the
-  platform assumes a workspace owns its warehouse — where here, dbt does.
-
-One limit follows from all of this and is worth stating plainly, because it bounds what the
-design can promise. Nothing runs inside Fabric to keep a workspace matching the repository.
-Changes are pushed by GitHub Actions when something merges, and if a workspace is edited in
-place, nothing notices and nothing converges it back. The repository is the source of truth
-by construction and by permission — humans hold Viewer on the shared workspaces — rather than
-by continuous enforcement.
-
-The delivery model is worth naming as precisely. **Dev is continuous deployment** — every
-merge that passes the gates reaches it unattended. **Test and production are continuous
-delivery**: every bundle is releasable, and releasing one is a decision a person makes.
-
-None of those is a defect, and none of them is avoidable while holding this position. They are
-the toll, and it is only worth paying when the requirements are real: the repository must be
-the source of truth, changes must be tested before production, something outside Fabric takes
-part, and more than one team needs isolation. **Where those are negotiable, Fabric's own
-tooling is simpler and the better answer** — which is what the next section is for.
+Its worth clarifying upfront that code rebuilds definitions, not data.  Where a table holds history the upstream no
+longer has, its state is irreplaceable. Such tables are systems of record and must be protected as such.
 
 ## Choosing a release process
 
-Microsoft's guidance names [three ways to release changes to Fabric workspaces](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd),
-and this repository deliberately takes the most involved one.
+Microsoft's guidance names [three ways to release changes to Fabric workspaces](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd).
 
 **Deployment pipelines** — Fabric's native promotion tool. A [deployment pipeline](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/intro-to-deployment-pipelines)
 chains workspaces into stages and, on request, copies the items in one stage over the paired items in the
-next. It needs no setup beyond the portal, shows a comparison of stages before you deploy, keeps a deployment history,
-and can be driven by API. Microsoft positions it as the lowest-effort option that's a good fit for
-[small-to-medium projects focused on semantic models and reports](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd#how-can-you-automate-fabric-ci-cd).
-For a team whose estate is a handful of Power BI items it may be all you need. It falls short of the standard set
+next. For a team whose estate is a handful of Power BI items it may be all you need. It falls short of the standard set
 out above once an estate grows: the source of truth is the `dev` workspace rather than the repository, nothing is
 tested in transit, whoever promotes to production can also edit it, and item coverage is partial — see Microsoft's own
 [considerations and limitations](https://learn.microsoft.com/fabric/cicd/deployment-pipelines/understand-the-deployment-process#considerations-and-limitations).
@@ -76,7 +32,7 @@ tested in transit, whoever promotes to production can also edit it, and item cov
 visible in Git, but environments *become* branches: a change travels between them as cherry-picks, drift between
 environments returns, and no single tested artefact moves through the stages.
 
-**API-driven** — build once from `main`, then deploy the same immutable **build artefact** to every environment. This repository calls that artefact a **bundle**, and deploys it with
+**API-driven** — build once from `main`, then deploy the same immutable **build artefact** to every environment, with
 [fabric-cicd](https://github.com/microsoft/fabric-cicd). The source of truth is the repository, changes are tested
 in transit, and environments are byte-identical by construction. It is the highest-effort option; paying that cost
 well is what the rest of this repository demonstrates.
@@ -91,7 +47,7 @@ solutions exchange data only through OneLake shortcuts.
 |---|---|---|---|
 | Control plane | Three workspaces (`ws-<solution>-dev/test/prod`), roles, a workspace identity, connections | Capacities, the Terraform module that creates a solution, the platform identity | Terraform, as `mi-fabric-platform` |
 | Data plane | A Lakehouse (Bronze), a Warehouse (Silver and Gold), notebooks, one dbt project, semantic models and reports — everything under `solutions/<name>/` | Nothing; a solution never writes into another's workspace | fabric-cicd and dbt, as `mi-deploy-<solution>` |
-| Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same bundle promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
+| Delivery | GitHub environments `<solution>-dev/test/prod` with the team's own reviewers; one build per merge; the same artefact promoted through every environment | The workflows, parameterised by solution; the artefact store | GitHub Actions with OIDC — no stored secrets |
 | People | The team holds Viewer on its shared workspaces and authors locally or in a **feature workspace** — Microsoft's term for a developer's own workspace connected to their own branch — of their own; changes land only through a pull request | The break-glass group (PIM) and the platform approvers | Entra groups |
 
 ```mermaid
@@ -161,7 +117,7 @@ what "build" and "test" mean, so rather than flatten that, every change moves th
 phases and each kind does its own work inside them:
 
 - **Validate** — checks that run in the pull request with no cloud access: linting, format locks, report and model rules.
-- **Build** — produce the deployable artefact: a bundle of item definitions, a parsed dbt project.
+- **Build** — produce the deployable artefact: item definitions plus a parsed dbt project.
 - **Deploy** — apply that artefact to one environment: fabric-cicd publish, `dbt build`.
 - **Verify** — prove it worked: item counts, dbt's own tests, smoke queries.
 

@@ -64,7 +64,7 @@ def test_content_digest_changes_when_content_changes(tmp_path):
     assert build.content_digest(sol) != before
 
 
-# --- the bundle a deploy consumes ------------------------------------------------
+# --- the artefact a deploy consumes ------------------------------------------------
 
 def test_build_produces_a_bundle_and_a_manifest(tmp_path):
     # build.py resolves `solutions/<name>` relative to the working directory.
@@ -75,13 +75,13 @@ def test_build_produces_a_bundle_and_a_manifest(tmp_path):
                        cwd=tmp_path, capture_output=True, text=True, check=False,
                        env={"PATH": "/usr/bin:/bin", "PYTHONPATH": str(REPO / "deploy")})
     assert r.returncode == 0, r.stderr
-    bundle = out / "demo-abc123.tar.gz"
-    assert bundle.is_file()
+    artefact = out / "demo-abc123.tar.gz"
+    assert artefact.is_file()
     manifest = json.loads((out / "release-manifest.json").read_text())
     assert manifest["solution"] == "demo"
     assert manifest["source_sha"] == "abc123"
     assert len(manifest["content_digest"]) == 64
-    with tarfile.open(bundle) as tar:
+    with tarfile.open(artefact) as tar:
         names = tar.getnames()
     assert any(n.endswith("notebook-content.py") for n in names)
     assert any(n.endswith("fct_demo.sql") for n in names)
