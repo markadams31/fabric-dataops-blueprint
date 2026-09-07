@@ -20,8 +20,9 @@ POWERBI = "https://api.powerbi.com/v1.0/myorg"
 
 
 def token(resource: str) -> str:
-    out = subprocess.run(
-        ["az", "account", "get-access-token", "--resource", resource,
+    # S603/S607: fixed arguments, no shell; az is the authenticated CLI on PATH.
+    out = subprocess.run(  # noqa: S603
+        ["az", "account", "get-access-token", "--resource", resource,  # noqa: S607
          "--query", "accessToken", "-o", "tsv"],
         capture_output=True, text=True, check=True)
     return out.stdout.strip()

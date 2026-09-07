@@ -36,3 +36,33 @@ jobs:
             echo "== $project"
             uv run dbt parse --no-use-colors --profiles-dir "$project" --project-dir "$project"
           done
+
+  # Separate from validate so a scanner pulling an image never slows the fast
+  # checks. Both are required by the protect-main ruleset.
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # gitleaks scans history, not just the diff
+
+      # This repository's central claim is that no secret exists to leak. This is
+      # the check that proves it, over every commit rather than the current tree.
+      # Run as a digest-pinned container rather than the action: no token, no
+      # licence handling, and the image is pinned the way this repository pins
+      # every other third-party thing.
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            detect --source /repo --redact --no-banner --exit-code 1
+
+      # Dependabot reports a vulnerable dependency after the fact; this refuses to
+      # merge one. Reads uv.lock, which is the pinned toolchain an artefact records.
+      - name: trivy
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            fs --scanners vuln,secret --severity HIGH,CRITICAL \
+            --ignore-unfixed --exit-code 1 --no-progress /repo

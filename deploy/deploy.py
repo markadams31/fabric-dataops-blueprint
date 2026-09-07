@@ -208,7 +208,9 @@ def run_dbt(workdir, cred, headers, ws_id, items) -> None:
         if not project.is_dir():
             continue
         print(f"dbt build: {project.name} -> {wh['displayName']}")
-        r = subprocess.run(["dbt", "build", "--no-use-colors",
+        # S603/S607: a fixed argument list with no shell and no user input; dbt
+        # comes from the pinned toolchain on PATH.
+        r = subprocess.run(["dbt", "build", "--no-use-colors",  # noqa: S603, S607
                             "--profiles-dir", str(project), "--project-dir", str(project)],
                            env=env, check=False)
         if r.returncode != 0:
