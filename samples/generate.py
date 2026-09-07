@@ -16,7 +16,9 @@ METHOD = ["credit_card", "bank_transfer", "coupon", "gift_card"]
 
 
 def main() -> None:
-    rng = random.Random(42)
+    # S311: determinism is the point — the sample data must be identical for
+    # everyone, and none of it is cryptographic.
+    rng = random.Random(42)  # noqa: S311
     OUT.mkdir(exist_ok=True)
 
     with open(OUT / "customers.csv", "w", newline="") as f:

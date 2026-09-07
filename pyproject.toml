@@ -23,5 +23,15 @@ line-length = 120
 # `notebookutils` are ambient globals — they are not standalone Python modules.
 extend-exclude = ["*.Notebook"]
 
+[tool.ruff.lint]
+# flake8-bandit: the security ruleset, in place of a separate SAST tool. Semgrep
+# was tried against this code and found nothing these rules do not cover.
+extend-select = ["S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Asserting is what a test does, and a test that shells out to `sys.executable`
+# is running this repository's own code.
+"tests/*" = ["S101", "S603"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

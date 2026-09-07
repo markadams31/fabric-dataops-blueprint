@@ -97,7 +97,8 @@ elif gh api --silent -X POST "repos/$GITHUB_REPO/rulesets" --input - <<'JSON' 2>
                    "required_review_thread_resolution": true}},
    {"type": "required_status_checks",
     "parameters": {"strict_required_status_checks_policy": false,
-                   "required_status_checks": [{"context": "validate"}]}}]}
+                   "required_status_checks": [{"context": "validate"},
+                                              {"context": "security"}]}}]}
 JSON
 then say "+  ruleset protect-main (PRs only, no force push, no deletion)"
 else warn "rulesets unavailable while private — re-run once public"

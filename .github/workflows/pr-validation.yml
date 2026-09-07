@@ -36,3 +36,32 @@ jobs:
             echo "== $project"
             uv run dbt parse --no-use-colors --profiles-dir "$project" --project-dir "$project"
           done
+
+  # Separate from validate so a scanner pulling an image never slows the fast
+  # checks. Both are required by the protect-main ruleset.
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # gitleaks scans history, not just the diff
+
+      # This repository's central claim is that no secret exists to leak. This is
+      # the check that proves it, over every commit rather than the current tree.
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+      # Dependabot reports a vulnerable dependency after the fact; this refuses to
+      # merge one. Reads uv.lock, which is the pinned toolchain an artefact records.
+      - name: trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

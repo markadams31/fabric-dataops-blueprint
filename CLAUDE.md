@@ -264,6 +264,23 @@ item-reference variable type is still preview, and nothing here has tested wheth
 fabric-cicd publishes a shortcut that references a variable. Worth a spike before the next
 solution is added.
 
+## Security scanning: what was adopted and what was measured out
+
+Added 2026-09-07 after a peer project showed a full blocking scan suite. Each candidate was
+run against this repository before deciding, rather than adopted because it is conventional.
+
+| Scanner | Result here | Decision |
+|---|---|---|
+| **gitleaks** | 138 commits, no leaks, 400 ms | **Adopted.** It is the check that proves this repository's central claim, over history rather than the current tree |
+| **trivy** (`fs`, vuln + secret) | Reads `uv.lock`, 0 vulnerabilities | **Adopted.** Dependabot reports a vulnerable dependency after the fact; this refuses to merge one |
+| **ruff `S`** (flake8-bandit) | 4 findings in `deploy/`, all intentional `subprocess` calls | **Adopted in place of a SAST tool.** No new tooling, already in the pipeline |
+| **checkov** | **Zero output — no findings, no passed checks** | **Rejected.** Verified against a deliberately insecure storage account, where it reported 11 failures, so the tool works. It has no policies for what this Terraform creates: identities, federated credentials, role assignments, a capacity, a budget. Its Azure rules target storage, key vault, networking, VMs and SQL. Adding it would be a green check that proves nothing |
+| **semgrep** | Ran `p/python` and `p/secrets`, found nothing | **Rejected.** A large image pull for no finding, on ground ruff's `S` rules already cover |
+
+The checkov result is the one worth remembering, because it will look like an omission to
+anyone comparing this repository with a peer. It is not: the tool was run, and the resource
+types here are outside its policy set.
+
 ## How this compares to other public projects
 
 Six comparable repositories cloned and read (2026-09-07): `bennyaustin/fabric-accelerator`
