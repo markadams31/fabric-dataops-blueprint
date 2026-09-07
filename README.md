@@ -7,7 +7,7 @@ This repository applies that key princicle of **code is the source of truth** to
 Fabric's native model treats the workspace as the source of truth due to how its primatives work. Git integration syncs workspace state, 
 deployment pipelines copy items between workspaces, variables bind at runtime, changes are made to items in place.
 
-This design is intended for enterprises that want to manage a large data estate at scale with confidence. The benefits of a code first approach include:
+A focus on code first helps teams manage and operate a large data estate at scale with confidence. The benefits include:
 - **History.** In the service, an overwritten report is gone. In Git, every version is kept, and restoring one is a redeploy.
 - **Consistency.** Every environment is built from the same source.
 - **Traceability.** The pull request records who changed what, the reasoning, and who approved it.
@@ -37,9 +37,9 @@ environments returns, and no single tested artefact moves through the stages.
 in transit, and environments are byte-identical by construction. It is the highest-effort option; paying that cost
 well is what the rest of this repository demonstrates.
 
-## The unit of work: a solution
+## What a solution is
 
-The repository's unit of work is what it calls a **solution** - one team's product with a [`dev` → `test` → `prod` set of
+A **solution** is one team's product: a [`dev` → `test` → `prod` set of
 workspaces](docs/path-to-production.md#the-three-workspaces) and one folder under `solutions/`. The platform hosts as many solutions as you need on shared capacity, and
 solutions exchange data only through OneLake shortcuts.
 

@@ -25,6 +25,10 @@ maps to. Three are also the names of workflows, which is where a reader usually 
 | **Data contract** | The industry term, used in the industry sense: one solution publishes tables another agrees to read. Here it is a OneLake shortcut plus a guard that checks the producer still builds the table | Versioned in the consumer's folder, so a contract disappears with either side of it |
 | **Heartbeat** | The scheduled production run: rebuild the marts, test them, open an issue if it fails | Ordinary scheduled-health-check sense; it proves production still works rather than changing it |
 
+**Phase**, not *stage*, is deliberate. Fabric already uses *stage* for an environment in a
+deployment pipeline, and this repository keeps that meaning — so the four steps a change moves
+through are phases, leaving *stage* free to mean what Microsoft means by it.
+
 **Release** is deliberately absent from that list. Microsoft uses it for the whole promotion
 process, and this repository borrows it in that sense only — there is no release stage and no
 release branch. The one place the word appears locally is `release-manifest.json`, which
